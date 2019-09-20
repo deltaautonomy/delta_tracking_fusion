@@ -89,13 +89,7 @@ def callback(image_msg, radar_msg, objects, publishers, **kwargs):
     # Node stop has been requested
     if STOP_FLAG: return
 
-    # Read image message
-    img = message_to_cv2(image_msg)
-    if img is None:
-        print('Error')
-        sys.exit(1)
-
-    # Run the perception pipeline
+    # Run the tracking pipeline
     tracks = tracking_pipeline(img.copy(), radar_msg, publishers)
 
     # Run the validation pipeline
@@ -106,10 +100,8 @@ def shutdown_hook():
     global STOP_FLAG
     STOP_FLAG = True
     time.sleep(3)
-    print('\n\033[95m' + '*' * 30 + ' Delta Perception Shutdown ' + '*' * 30 + '\033[00m\n')
-    print('\n\033[95m' + '*' * 30 + ' Calculating YOLOv3 mAP ' + '*' * 30 + '\033[00m\n')
-    print('YOLOv3 Mean Average Precision @ 0.5 Overlap: %.3f%%\n' % (calculate_map(0.5) * 100))
-
+    print('\n\033[95m' + '*' * 30 + ' Delta Tracking and fusion Shutdown ' + '*' * 30 + '\033[00m\n')
+    print ('Tracking results - MOTA:') #TODO
 
 def run(**kwargs):
     global tf_listener, CAMERA_EXTRINSICS
@@ -123,7 +115,7 @@ def run(**kwargs):
     validation_setup()
     
     # Setup models
-    yolov3.setup()
+    yolov3.setup() 
 
     # Find the camera to vehicle extrinsics
     tf_listener.waitForTransform(CAMERA_FRAME, RADAR_FRAME, rospy.Time(), rospy.Duration(100.0))
