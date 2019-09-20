@@ -2,10 +2,10 @@
 # -*- coding: utf-8 -*-
 
 '''
-Author  : Heethesh Vhavle
-Email   : heethesh@cmu.edu
+Author  : Apoorv Singh
+Email   : apoorvs@andrew.cmu.edu
 Version : 1.0.0
-Date    : Apr 07, 2019
+Date    : Sep 17, 2019
 '''
 
 # Python 2/3 compatibility
@@ -20,13 +20,12 @@ from init_paths import *
 import matplotlib.pyplot as plt
 
 # ROS modules
-import tf
 import rospy
 import message_filters
 
 # ROS messages
-from delta_perception.msg import MarkerArrayStamped
 from delta_perception.msg import CameraTrack, CameraTrackArray
+from delta_prediction.msg import EgoStateEstimate
 from radar_msgs.msg import RadarTrack, RadarTrackArray
 
 # Local python modules
@@ -49,7 +48,7 @@ EGO_VEHICLE_FRAME = 'ego_vehicle'
 CAMERA_FRAME = 'ego_vehicle/camera/rgb/front'
 VEHICLE_FRAME = 'vehicle/%03d/autopilot'
 
-# Perception models
+
 tracker = Tracker()
 
 # FPS loggers
@@ -65,7 +64,7 @@ def validate(tracks):
     pass
 
 
-def perception_pipeline(img, radar_msg, publishers, vis=True, **kwargs):
+def tracking_fusion_pipeline(publishers, vis=True, **kwargs):
     # Log pipeline FPS
     all_fps.lap()
 
@@ -123,15 +122,8 @@ def run(**kwargs):
     CAMERA_EXTRINSICS = pose_to_transformation(position=trans, orientation=rot)
 
     # Handle params and topics
-    camera_info = rospy.get_param('~camera_info', '/carla/ego_vehicle/camera/rgb/front/camera_info')
-    image_color = rospy.get_param('~image_color', '/carla/ego_vehicle/camera/rgb/front/image_color')
-    object_array = rospy.get_param('~object_array', '/carla/objects')
-    # vehicle_markers = rospy.get_param('~vehicle_markers', '/carla/vehicle_marker_array')
-    radar = rospy.get_param('~radar', '/delta/radar/tracks')
-    output_image = rospy.get_param('~output_image', '/delta/perception/object_detection_tracking/image')
-    camera_track = rospy.get_param('~camera_track', '/delta/perception/camera_track')
-    camera_track_marker = rospy.get_param('~camera_track_marker', '/delta/perception/camera_track_marker')
-    radar_track_marker = rospy.get_param('~radar_track_marker', '/delta/perception/radar_track_marker')
+    radar = rospy.get_param('~radar', '/carla/ego_vehicle/radar/tracks')
+    radar = rospy.get_param('~radar', '/delta/perception/camera_track_array)
 
     # Display params and topics
     rospy.loginfo('CameraInfo topic: %s' % camera_info)
