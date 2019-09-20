@@ -6,7 +6,6 @@ weights/
 
 # Custom folders
 results
-experimental/
 
 # Prerequisites
 *.d
