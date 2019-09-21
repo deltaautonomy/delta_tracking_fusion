@@ -42,17 +42,17 @@ tf_listener = None
 RADAR_FRAME = '/ego_vehicle/radar'
 EGO_VEHICLE_FRAME = 'ego_vehicle'
 
-# Classes and models
-tracker = Tracker()
 
 # FPS loggers
 FRAME_COUNT = 0
 tracker_fps = FPSLogger('Tracker')
 
 # Global thresholds
-HIT_THRESHOLD = 3
+HIT_THRESHOLD = 1
 MISS_THRESHOLD = 3
 
+# Classes
+mot_tracker = Tracker(HIT_THRESHOLD, MISS_THRESHOLD)
 
 ########################### Functions ###########################
 
@@ -91,18 +91,10 @@ def tracking_fusion_pipeline(camera_msg, radar_msg, state_msg, publishers, vis=T
     # Tracking initialization 
     tracker_fps.lap()
 
-    #Getting raw input values
-    measurements_raw = get_tracker_inputs(camera_msg, radar_msg, state_msg)
-    current_step = Tracker(HIT_THRESHOLD, MISS_THRESHOLD)
-    measurements_fused = current_step.data_association(
-        measurements_raw['camera_tracks'], measurements_raw['radar_tracks'])
+    # update step on mot_tracker
+    inputs = get_tracker_inputs(camera_msg, radar_msg, state_msg)
+    tracks = mot_tracker.step(inputs)
     
-    
-
-    
-
-
-    tracks = Tracker.update(raw_inputs)
     tracker_fps.tick()
 
     # Display FPS logger status
