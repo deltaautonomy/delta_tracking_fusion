@@ -255,7 +255,13 @@ class SensorMeasurementModel():
     def set_R(self, R):
         assert (R.shape == self.R.shape), "Shape of the R matrix is incorrect"
         self.R = R
-    
+
+    def get_H(self, state):
+        """
+        Gets the linearized H matrix for EKF
+        """
+        pass
+
     def measurement_function(self, state):
         """
         Define a measurement function for EKF
@@ -305,3 +311,68 @@ if __name__ == "__main__":
                   [ 0,  0, 10,  0],
                   [ 0,  0,  0, 10]])
     KF.step(1.05, np.array([[1],[3]]), np.array([[3.1],[1.3],[1.5]]), R_radar=R)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+    # def constant_acceleration_motion_model(self, time_step):
+    #     """
+    #     Fuction to calculate the matrices of the filter. Uses constant acceleration model
+
+    #     @param: time_step - the time step to calculate the matrices at
+    #     """
+    #     T = time_step
+    #     F = np.array([[1, T, 0.5*T**2, 0, 0,        0], 
+    #                   [0, 1,        T, 0, 0,        0],
+    #                   [0, 0,        1, 0, 0,        0],
+    #                   [0, 0,        0, 1, T, 0.5*T**2],
+    #                   [0, 0,        0, 0, 1,        T], 
+    #                   [0, 0,        0, 0, 0,        1]])
+
+    #     P = np.array([[1000.0,      0,      0,      0,      0,      0], 
+    #                   [     0, 1000.0,      0,      0,      0,      0],
+    #                   [     0,      0, 1000.0,      0,      0,      0],
+    #                   [     0,      0,      0, 1000.0,      0,      0],
+    #                   [     0,      0,      0,      0, 1000.0,      0],
+    #                   [     0,      0,      0,      0,      0, 1000.0]])
+    
+    #     B = np.array([[0, 0, 1, 0, 0, 0],
+    #                   [0, 0, 0, 0, 0, 1]])
+
+    #     G = np.array([0.5*T**2, T, 1, 0.5*T**2, T, 1])
+
+    #     return F, P, B, G
+
+
+# class RadarMeasurementModel(SensorMeasurementModel):
+#     def __init__(self, state_dim, sensor_dim):
+#         SensorMeasurementModel.__init__(self, state_dim, sensor_dim)
+
+#     def measurement_function(self, state):
+#         px = state[0][0]
+#         py = state[2][0]
+#         vx = state[1][0]
+#         vy = state[3][0]
+#         r = math.sqrt(px**2 + py**2)
+#         theta = math.atan2(py, px)
+#         if abs(r) > 0.000001:
+#             r_dot = (px*vx + py*vy)/r
+#         else:
+#             r_dot = 0
+#         return np.array([[r], [theta], [r_dot]])

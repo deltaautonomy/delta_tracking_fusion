@@ -22,13 +22,13 @@ from scipy.spatial import distance
 from scipy.optimize import linear_sum_assignment
 
 # Local python modules
-# from filter import KarmeshFillter
+from filter import KalmanFilterRADARCamera
 
 
 class Track():
     unique_id = 0
     def __init__(self, state):
-        self.filter = KarmeshFillter()
+        self.filter = KalmanFilterRADARCamera()
         self.state = state
         Track.unique_id += 1
         self.track_id = Track.unique_id 
@@ -41,20 +41,22 @@ class Track():
 
 
 class Tracker():
-    def __init__(self):
+    def __init__(self, hit_threshold, miss_threshold):
         self.tracks = []
+        self.hit_threshold = hit_threshold
+        self.miss_threshold = miss_threshold
 
-    def data_association(self, states_a, states_b):
+    def data_association(self, states_c, states_r):
         ''' Method to solve least cost problem for associating data from two 
         input lists of numpy arrays'''
         # Extract relevent states
-        states_a_pose = np.asarray(states_a[:, 0:2])
-        states_b_pose = np.asarray(states_b[:, 0:2])
+        states_c_pose = np.asarray(states_c[:, 0:2])
+        states_r_pose = np.asarray(states_r[:, 0:2])
         
         # Formulate cost matrix
-        cost = distance.cdist(states_a_pose, states_b_pose, 'euclidean')
+        cost = distance.cdist(states_c_pose, states_r_pose, 'euclidean')
         row_ind, col_ind = linear_sum_assignment(cost)  
-        return np.c_[states_a_pose[row_ind], states_b_pose[col_ind]]
+        return np.c_[states_c_pose[row_ind], states_r_pose[col_ind]]
 
     def motion_compensate(self, ego_state):
         pass
@@ -80,12 +82,12 @@ if __name__ == '__main__':
     tracker = Tracker()
 
     # Data association test
-    # states_a = np.asarray([[1,2],[3,4],[5,6]])
-    # states_b = np.asarray([[1.1,2, 1, 0],[5.1,6.2, 0.5, 0.5],[3.1,4.2, 0, 0],[11,10, 3, 3]])
-    # print(tracker.data_association(states_a, states_b))
+    # states_c = np.asarray([[1,2],[3,4],[5,6]])
+    # states_r = np.asarray([[1.1,2, 1, 0],[5.1,6.2, 0.5, 0.5],[3.1,4.2, 0, 0],[11,10, 3, 3]])
+    # print(tracker.data_association(states_c, states_r))
 
     # Track ID test
-    # a = Track(None)
-    # print(a.track_id)
-    # b = Track(None)
-    # print(b.track_id)
+    a = Track(None)
+    print(a.track_id)
+    b = Track(None)
+    print(b.track_id)

@@ -49,6 +49,10 @@ tracker = Tracker()
 FRAME_COUNT = 0
 tracker_fps = FPSLogger('Tracker')
 
+# Global thresholds
+HIT_THRESHOLD = 3
+MISS_THRESHOLD = 3
+
 
 ########################### Functions ###########################
 
@@ -84,9 +88,21 @@ def tracking_fusion_pipeline(camera_msg, radar_msg, state_msg, publishers, vis=T
     # Log pipeline FPS
     all_fps.lap()
 
-    # Object detection
+    # Tracking initialization 
     tracker_fps.lap()
-    tracks = tracker.update(inputs)
+
+    #Getting raw input values
+    measurements_raw = get_tracker_inputs(camera_msg, radar_msg, state_msg)
+    current_step = Tracker(HIT_THRESHOLD, MISS_THRESHOLD)
+    measurements_fused = current_step.data_association(
+        measurements_raw['camera_tracks'], measurements_raw['radar_tracks'])
+    
+    
+
+    
+
+
+    tracks = Tracker.update(raw_inputs)
     tracker_fps.tick()
 
     # Display FPS logger status
