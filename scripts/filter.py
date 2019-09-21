@@ -28,6 +28,7 @@ class KalmanFilterRADARCamera():
         self.radar_dim = radar_dim
         self.control_dim = control_dim
         self.motion_model = motion_model
+        self.verbose = verbose
 
         # Filter State estimate [x, vx, y, vy]
         self.x = np.zeros((state_dim, 1))
@@ -46,7 +47,6 @@ class KalmanFilterRADARCamera():
         # self.radar = RadarMeasurementModel(state_dim, radar_dim)
         self.initialize_filter(sigma_acc=8.8)
 
-        self.verbose = verbose
         self.id = vehicle_id
         self.time_since_update = 0 
         self.age = 0 # 
@@ -171,13 +171,16 @@ class KalmanFilterRADARCamera():
 
         if sensor == 'radar':
             assert (z.shape == (self.radar_dim,1)), "The data input dimension is incorrect"
-            H = self.radar.get_H(self.x)
+            # H = self.radar.get_H(self.x)
+            H = self.radar.H
             if R_current is not None:
                 self.radar.set_R(R_current)
                 R = R_current
             else:
                 R = self.radar.R
-            Y = z - self.radar.measurement_function(self.x)
+            # Y = z - self.radar.measurement_function(self.x)
+            Y = z - np.matmul(H, self.x)
+
             
         else:
             assert (z.shape == (self.camera_dim,1)), "The data input dimension is incorrect"
@@ -213,14 +216,14 @@ class KalmanFilterRADARCamera():
             self.predict(self.dt)
         if (time_step%self.dt > 0):
             self.predict(time_step%self.dt)
+        self.last_call_time = current_time
         return self.x
     
-    def update_step(self, z_camera=None, z_radar=None, R_camera=None, R_radar=None)
+    def update_step(self, z_camera=None, z_radar=None, R_camera=None, R_radar=None):
         if z_camera is not None:
             self.update(z_camera, R_camera, sensor='camera')
         if z_radar is not None:
             self.update(z_radar, R_radar, sensor='radar')
-        self.last_call_time = current_time
         return self.x
 
     def get_state(self):
@@ -271,7 +274,6 @@ class SensorMeasurementModel():
         if R is not None:
             self.set_R(R)
 
-
     def get_H(self, state):
         px = state[0][0]
         py = state[2][0]
@@ -304,4 +306,5 @@ if __name__ == "__main__":
                   [ 0, 10,  0,  0], 
                   [ 0,  0, 10,  0],
                   [ 0,  0,  0, 10]])
-    KF.step(1.05, np.array([[1],[3]]), np.array([[3.1],[1.3],[1.5]]), R_radar=R)
+    KF.predict_step(1.05)
+    KF.update_step(z_camera=np.array([[1],[3]]), z_radar=np.array([[3.1],[1.3],[1.5],[1.5]]), R_radar=R)
