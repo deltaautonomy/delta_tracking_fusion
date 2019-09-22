@@ -82,9 +82,6 @@ class KalmanFilterRADARCamera():
                              [0, 1]])
         self.camera.set_R(R_camera)
 
-        # H_radar = np.array([[1, 0, 1, 0], 
-        #                     [1, 0, 1, 0], 
-        #                     [1, 1, 1, 1]])
         H_radar = np.array([[1, 0, 0, 0], 
                             [0, 1, 0, 0], 
                             [0, 0, 1, 0],
@@ -96,9 +93,6 @@ class KalmanFilterRADARCamera():
                             [0, 1, 0, 0], 
                             [0, 0, 1, 0],
                             [0, 0, 0, 1]])
-        # R_radar = np.array([[1, 0, 0],
-        #                     [0, 1, 0], 
-        #                     [0, 0, 1]])
         self.radar.set_R(R_radar)
         if self.verbose == True:
             print("==========================Predict Function==========================")
@@ -130,8 +124,7 @@ class KalmanFilterRADARCamera():
         else:
             assert (u.shape == (self.control_dim, 1)), "Shape of the control input is incorrect"
             self.x = np.matmul(self.F,self.x) + np.matmul(self.B, u)
-            # TODO: Write the process noise equation correctly for the case when control input is given 
-            self.P = np.matmul(self.F, np.matmul(self.P, self.F.T)) + self.Q # THe Q part of equation will be different
+            self.P = np.matmul(self.F, np.matmul(self.P, self.F.T)) + self.Q
 
         if self.verbose == True:
             print("==========================Predict Function==========================")
