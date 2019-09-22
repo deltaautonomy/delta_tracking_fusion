@@ -42,7 +42,7 @@ tf_listener = None
 RADAR_FRAME = '/ego_vehicle/radar'
 EGO_VEHICLE_FRAME = 'ego_vehicle'
 
-# Classes and models
+# Classes
 tracker = Tracker()
 
 # FPS loggers
@@ -79,7 +79,6 @@ def get_tracker_inputs(camera_msg, radar_msg, state_msg):
     ])
 
     return inputs
-
 
 def tracking_fusion_pipeline(camera_msg, radar_msg, state_msg, publishers, vis=True, **kwargs):
     # Log pipeline FPS

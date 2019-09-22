@@ -1,19 +1,16 @@
 <?xml version="1.0"?>
 <package format="2">
   <name>delta_tracking_fusion</name>
-  <version>0.0.0</version>
+  <version>1.0.1</version>
   <description>The delta_tracking_fusion package</description>
 
   <!-- One maintainer tag required, multiple allowed, one person per tag -->
-  <!-- Example:  -->
-  <!-- <maintainer email="jane.doe@example.com">Jane Doe</maintainer> -->
-  <maintainer email="apoorv@todo.todo">apoorv</maintainer>
+  <maintainer email="deltaautonomy@gmail.com">Delta Autonomy</maintainer>
 
 
   <!-- One license tag required, multiple allowed, one license per tag -->
   <!-- Commonly used license strings: -->
-  <!--   BSD, MIT, Boost Software License, GPLv2, GPLv3, LGPLv2.1, LGPLv3 -->
-  <license>TODO</license>
+  <license>BSD</license>
 
 
   <!-- Url tags are optional, but multiple are allowed, one per tag -->
@@ -23,8 +20,9 @@
 
   <!-- Author tags are optional, multiple are allowed, one per tag -->
   <!-- Authors do not have to be maintainers, but could be -->
-  <!-- Example: -->
-  <!-- <author email="jane.doe@example.com">Jane Doe</author> -->
+  <author email="apoorvs@andrew.cmu.edu">Apoorv Singh</author>
+  <author email="karmeshy@andrew.cmu.edu">Karmesh Yadav</author>
+  <author email="heethesh@cmu.edu">Heethesh Vhavle</author>
 
 
   <!-- The *depend tags are used to specify dependencies -->
@@ -36,6 +34,8 @@
   <build_depend>roscpp</build_depend>
   <build_depend>sensor_msgs</build_depend>
   <build_depend>visualization_msgs</build_depend>
+  <build_depend>delta_perception</build_depend>
+  <build_depend>delta_prediction</build_depend>
   <build_depend>message_generation</build_depend>
   <build_export_depend>cv_bridge</build_export_depend>
   <build_export_depend>image_transport</build_export_depend>
@@ -43,12 +43,16 @@
   <build_export_depend>roscpp</build_export_depend>
   <build_export_depend>sensor_msgs</build_export_depend>
   <build_export_depend>visualization_msgs</build_export_depend>
+  <build_export_depend>delta_perception</build_export_depend>
+  <build_export_depend>delta_prediction</build_export_depend>
   <exec_depend>cv_bridge</exec_depend>
   <exec_depend>image_transport</exec_depend>
   <exec_depend>opencv3</exec_depend>
   <exec_depend>roscpp</exec_depend>
   <exec_depend>sensor_msgs</exec_depend>
   <exec_depend>visualization_msgs</exec_depend>
+  <exec_depend>delta_perception</exec_depend>
+  <exec_depend>delta_prediction</exec_depend>
   <exec_depend>message_runtime</exec_depend>
 
 
