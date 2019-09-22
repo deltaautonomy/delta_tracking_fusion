@@ -53,15 +53,13 @@ class Tracklet():
         # Sensor fusion
         self.state = None
         self.last_update_time = timestamp
-        self.filter = KalmanFilterRADARCamera(
-            vehicle_id = self.track_id,
-            state_dim = 4,
-            camera_dim = 2,
-            radar_dim = 4,
-            control_dim = 0,
-            dt = 0.1,
-            first_call_time = timestamp
-        )
+        self.filter = KalmanFilterRADARCamera(vehicle_id=self.track_id,
+                                              state_dim=4,
+                                              camera_dim=2,
+                                              radar_dim=4,
+                                              control_dim=0,
+                                              dt=0.1,
+                                              first_call_time=timestamp)
 
         self.update(timestamp, z_radar=z_radar, z_camera=z_camera)
 
