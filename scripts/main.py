@@ -58,16 +58,16 @@ def validate(tracks):
 
 
 def get_tracker_inputs(camera_msg, radar_msg, state_msg):
-    inputs = {'camera_tracks': [], 'radar_tracks': [], 'ego_state': []}
+    inputs = {'camera': [], 'radar': [], 'ego_state': []}
     inputs['timestamp'] = state_msg.header.stamp
     
     for track in camera_msg.tracks:
-        inputs['camera_tracks'].append(np.asarray([track.x, track.y]))
-    
+        inputs['camera'].append(np.asarray([track.x, track.y]))
+
     for track in radar_msg.tracks:
         pos_msg = position_to_numpy(track.track_shape.points[0])
         # todo(prateek): trasnform this radar data to ego vehicle frame
-        inputs['radar_tracks'].append(np.asarray([pos_msg[0] - 2.2, pos_msg[1],
+        inputs['radar'].append(np.asarray([pos_msg[0] - 2.2, pos_msg[1],
             track.linear_velocity.x, track.linear_velocity.y]))
 
     inputs['ego_state'] = np.asarray([

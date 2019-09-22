@@ -84,23 +84,16 @@ class KalmanFilterRADARCamera():
                              [0, 1]])
         self.camera.set_R(R_camera)
 
-        # H_radar = np.array([[1, 0, 1, 0], 
-        #                     [1, 0, 1, 0], 
-        #                     [1, 1, 1, 1]])
         H_radar = np.array([[1, 0, 0, 0], 
                             [0, 1, 0, 0], 
                             [0, 0, 1, 0],
                             [0, 0, 0, 1]])
-        
-
         self.radar.set_H(H_radar)
+        
         R_radar = np.array([[1, 0, 0, 0],
                             [0, 1, 0, 0], 
                             [0, 0, 1, 0],
                             [0, 0, 0, 1]])
-        # R_radar = np.array([[1, 0, 0],
-        #                     [0, 1, 0], 
-        #                     [0, 0, 1]])
         self.radar.set_R(R_radar)
         
         if self.verbose:
