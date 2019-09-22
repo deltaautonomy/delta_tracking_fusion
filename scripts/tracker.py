@@ -128,7 +128,7 @@ class Tracker():
 
         # loop prediction on mesurements and active tracker updating the miss_threshold on each
         for _, track_object in self.tracks.items():
-            track_object.predict()
+            track_object.predict(time_step) #TODO: Apoorv define time_step
             track_object.motion_compensate(inputs['ego_state'])
         
 
