@@ -187,7 +187,7 @@ class KalmanFilterRADARCamera():
         
         if self.verbose:
             print("==========================Update Function [{}] ==========================".format(sensor))
-            print("_____State_____ \n", self.x )
+            print("_____State_____ \n", self.x)
             print("_____covariance_____\n", self.P)
             print("_____Error_____\n", Y)
             print("_____Kalman_Gain_____\n", K)

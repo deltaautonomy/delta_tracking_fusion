@@ -93,11 +93,11 @@ class Tracker():
         # Extract pose from states
         states_a_pose = np.asarray([[state[0], state[1]] for state in states_a])
         states_b_pose = np.asarray([[state[0], state[1]] for state in states_b])
-        
+
         # Formulate cost matrix
         cost = distance.cdist(states_a_pose, states_b_pose, 'euclidean')
-        row_ind, col_ind = linear_sum_assignment(cost)  
-        
+        row_ind, col_ind = linear_sum_assignment(cost)
+
         # Associate the indices and along with gating
         gate_ind = np.where(cost[row_ind, col_ind] < gating_threshold)
         association = [np.r_[states_a[r], states_b[c]] for r, c in zip(row_ind, col_ind)]
