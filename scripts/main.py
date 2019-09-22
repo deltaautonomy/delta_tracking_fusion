@@ -50,9 +50,13 @@ tracker_fps = FPSLogger('Tracker')
 # Global thresholds
 HIT_THRESHOLD = 1
 MISS_THRESHOLD = 3
+R_radar = np.array([[10,  0,  0,  0],
+              [ 0, 10,  0,  0], 
+              [ 0,  0, 10,  0],
+              [ 0,  0,  0, 10]])
 
 # Classes
-mot_tracker = Tracker(HIT_THRESHOLD, MISS_THRESHOLD)
+mot_tracker = Tracker(HIT_THRESHOLD, MISS_THRESHOLD, R_radar)
 
 ########################### Functions ###########################
 
@@ -62,16 +66,16 @@ def validate(tracks):
 
 
 def get_tracker_inputs(camera_msg, radar_msg, state_msg):
-    inputs = {'camera_tracks': [], 'radar_tracks': [], 'ego_state': []}
+    inputs = {'camera_measurement': [], 'radar_measurement': [], 'ego_state': []}
     inputs['timestamp'] = state_msg.header.stamp
     
     for track in camera_msg.tracks:
-        inputs['camera_tracks'].append(np.asarray([track.x, track.y]))
+        inputs['camera_measurement'].append(np.asarray([track.x, track.y]))
     
     for track in radar_msg.tracks:
         pos_msg = position_to_numpy(track.track_shape.points[0])
         # todo(prateek): trasnform this radar data to ego vehicle frame
-        inputs['radar_tracks'].append(np.asarray([pos_msg[0] - 2.2, pos_msg[1],
+        inputs['radar_measurement'].append(np.asarray([pos_msg[0] - 2.2, pos_msg[1],
             track.linear_velocity.x, track.linear_velocity.y]))
 
     inputs['ego_state'] = np.asarray([
@@ -83,7 +87,6 @@ def get_tracker_inputs(camera_msg, radar_msg, state_msg):
 
     return inputs
 
-
 def tracking_fusion_pipeline(camera_msg, radar_msg, state_msg, publishers, vis=True, **kwargs):
     # Log pipeline FPS
     all_fps.lap()
@@ -94,7 +97,7 @@ def tracking_fusion_pipeline(camera_msg, radar_msg, state_msg, publishers, vis=T
     # update step on mot_tracker
     inputs = get_tracker_inputs(camera_msg, radar_msg, state_msg)
     tracks = mot_tracker.step(inputs)
-    
+
     tracker_fps.tick()
 
     # Display FPS logger status

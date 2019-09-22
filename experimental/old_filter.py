@@ -28,6 +28,7 @@ class KalmanFilterRADARCamera():
         self.radar_dim = radar_dim
         self.control_dim = control_dim
         self.motion_model = motion_model
+        self.verbose = verbose
 
         # Filter State estimate [x, vx, y, vy]
         self.x = np.zeros((state_dim, 1))
@@ -46,11 +47,11 @@ class KalmanFilterRADARCamera():
         # self.radar = RadarMeasurementModel(state_dim, radar_dim)
         self.initialize_filter(sigma_acc=8.8)
 
-        self.verbose = verbose
         self.id = vehicle_id
         self.time_since_update = 0 
         self.age = 0 # 
         self.last_call_time = first_call_time
+
 
     def initialize_filter(self, sigma_acc=8.8):
         """
@@ -171,13 +172,16 @@ class KalmanFilterRADARCamera():
 
         if sensor == 'radar':
             assert (z.shape == (self.radar_dim,1)), "The data input dimension is incorrect"
-            H = self.radar.get_H(self.x)
+            # H = self.radar.get_H(self.x)
+            H = self.radar.H
             if R_current is not None:
                 self.radar.set_R(R_current)
                 R = R_current
             else:
                 R = self.radar.R
-            Y = z - self.radar.measurement_function(self.x)
+            # Y = z - self.radar.measurement_function(self.x)
+            Y = z - np.matmul(H, self.x)
+
             
         else:
             assert (z.shape == (self.camera_dim,1)), "The data input dimension is incorrect"
@@ -213,14 +217,14 @@ class KalmanFilterRADARCamera():
             self.predict(self.dt)
         if (time_step%self.dt > 0):
             self.predict(time_step%self.dt)
+        self.last_call_time = current_time
         return self.x
     
-    def update_step(self, z_camera=None, z_radar=None, R_camera=None, R_radar=None)
+    def update_step(self, z_camera=None, z_radar=None, R_camera=None, R_radar=None):
         if z_camera is not None:
             self.update(z_camera, R_camera, sensor='camera')
         if z_radar is not None:
             self.update(z_radar, R_radar, sensor='radar')
-        self.last_call_time = current_time
         return self.x
 
     def get_state(self):
@@ -255,13 +259,7 @@ class SensorMeasurementModel():
     def set_R(self, R):
         assert (R.shape == self.R.shape), "Shape of the R matrix is incorrect"
         self.R = R
-
-    def get_H(self, state):
-        """
-        Gets the linearized H matrix for EKF
-        """
-        pass
-
+    
     def measurement_function(self, state):
         """
         Define a measurement function for EKF
@@ -276,7 +274,6 @@ class SensorMeasurementModel():
 
         if R is not None:
             self.set_R(R)
-
 
     def get_H(self, state):
         px = state[0][0]
@@ -310,69 +307,5 @@ if __name__ == "__main__":
                   [ 0, 10,  0,  0], 
                   [ 0,  0, 10,  0],
                   [ 0,  0,  0, 10]])
-    KF.step(1.05, np.array([[1],[3]]), np.array([[3.1],[1.3],[1.5]]), R_radar=R)
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-    # def constant_acceleration_motion_model(self, time_step):
-    #     """
-    #     Fuction to calculate the matrices of the filter. Uses constant acceleration model
-
-    #     @param: time_step - the time step to calculate the matrices at
-    #     """
-    #     T = time_step
-    #     F = np.array([[1, T, 0.5*T**2, 0, 0,        0], 
-    #                   [0, 1,        T, 0, 0,        0],
-    #                   [0, 0,        1, 0, 0,        0],
-    #                   [0, 0,        0, 1, T, 0.5*T**2],
-    #                   [0, 0,        0, 0, 1,        T], 
-    #                   [0, 0,        0, 0, 0,        1]])
-
-    #     P = np.array([[1000.0,      0,      0,      0,      0,      0], 
-    #                   [     0, 1000.0,      0,      0,      0,      0],
-    #                   [     0,      0, 1000.0,      0,      0,      0],
-    #                   [     0,      0,      0, 1000.0,      0,      0],
-    #                   [     0,      0,      0,      0, 1000.0,      0],
-    #                   [     0,      0,      0,      0,      0, 1000.0]])
-    
-    #     B = np.array([[0, 0, 1, 0, 0, 0],
-    #                   [0, 0, 0, 0, 0, 1]])
-
-    #     G = np.array([0.5*T**2, T, 1, 0.5*T**2, T, 1])
-
-    #     return F, P, B, G
-
-
-# class RadarMeasurementModel(SensorMeasurementModel):
-#     def __init__(self, state_dim, sensor_dim):
-#         SensorMeasurementModel.__init__(self, state_dim, sensor_dim)
-
-#     def measurement_function(self, state):
-#         px = state[0][0]
-#         py = state[2][0]
-#         vx = state[1][0]
-#         vy = state[3][0]
-#         r = math.sqrt(px**2 + py**2)
-#         theta = math.atan2(py, px)
-#         if abs(r) > 0.000001:
-#             r_dot = (px*vx + py*vy)/r
-#         else:
-#             r_dot = 0
-#         return np.array([[r], [theta], [r_dot]])
+    KF.predict_step(1.05)
+    KF.update_step(z_camera=np.array([[1],[3]]), z_radar=np.array([[3.1],[1.3],[1.5],[1.5]]), R_radar=R)
