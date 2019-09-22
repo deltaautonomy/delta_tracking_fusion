@@ -75,6 +75,7 @@ def get_tracker_inputs(camera_msg, radar_msg, state_msg):
         state_msg.pose.position.y,
         ego_state.twist.linear.x,
         ego_state.twist.linear.y,
+        orientation_to_rpy(ego_state.twist.orientation)[2]
     ])
 
     return inputs

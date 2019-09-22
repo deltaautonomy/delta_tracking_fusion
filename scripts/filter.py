@@ -3,7 +3,9 @@
 #####                   Written By: Karmesh Yadav                   #####
 #####                         Date: 09/09/19                        #####
 #########################################################################
-from __future__ import division
+
+# Python 2/3 compatibility
+from __future__ import print_function, absolute_import, division
 import numpy as np
 import time
 import math
@@ -11,7 +13,8 @@ import pdb
 
 # A class for Kalman Filter which can take more than 1 sensor as input
 class KalmanFilterRADARCamera():
-    def __init__(self, vehicle_id, state_dim, camera_dim, radar_dim, control_dim, dt, first_call_time, motion_model='velocity', verbose=True):
+    def __init__(self, vehicle_id, state_dim, camera_dim, radar_dim, control_dim,
+        dt, first_call_time, motion_model='velocity', verbose=False):
         """
         Initializes the kalman filter class 
         @param: vehicle_id - the id given to the vehicle track
@@ -99,14 +102,14 @@ class KalmanFilterRADARCamera():
         #                     [0, 1, 0], 
         #                     [0, 0, 1]])
         self.radar.set_R(R_radar)
-        if self.verbose == True:
+        
+        if self.verbose:
             print("==========================Predict Function==========================")
-            print "_____State_____ \n", self.x 
-            print "_____covariance_____\n", self.P
-            print "_____State Transition_____\n", self.F
-            print "_____Process Noise_____\n", self.Q
-            print "_____Control Transition_____\n", self.B
-
+            print("_____State_____ \n", self.x )
+            print("_____covariance_____\n", self.P)
+            print("_____State Transition_____\n", self.F)
+            print("_____Process Noise_____\n", self.Q)
+            print("_____Control Transition_____\n", self.B)
 
     def predict(self, time_step, u=None):
         """
@@ -132,10 +135,10 @@ class KalmanFilterRADARCamera():
             # TODO: Write the process noise equation correctly for the case when control input is given 
             self.P = np.matmul(self.F, np.matmul(self.P, self.F.T)) + self.Q # THe Q part of equation will be different
 
-        if self.verbose == True:
+        if self.verbose:
             print("==========================Predict Function==========================")
-            print "_____State_____ \n", self.x 
-            print "_____covariance_____\n", self.P
+            print("_____State_____ \n", self.x )
+            print("_____covariance_____\n", self.P)
 
     def constant_velocity_motion_model(self, time_step):
         """
@@ -222,12 +225,13 @@ class KalmanFilterRADARCamera():
         self.x = self.x + np.matmul(K, Y)
         KH = np.matmul(K, H)
         self.P = np.matmul((np.eye(KH.shape[0]) - KH), self.P)
-        if self.verbose == True:
+        
+        if self.verbose:
             print("==========================Update Function [{}] ==========================".format(sensor))
-            print "_____State_____ \n", self.x 
-            print "_____covariance_____\n", self.P
-            print "_____Error_____\n", Y
-            print "_____Kalman_Gain_____\n", K
+            print("_____State_____ \n", self.x )
+            print("_____covariance_____\n", self.P)
+            print("_____Error_____\n", Y)
+            print("_____Kalman_Gain_____\n", K)
             
     def predict_step(self, current_time):
         """
@@ -242,7 +246,7 @@ class KalmanFilterRADARCamera():
             self.predict(time_step%self.dt)
         return self.x
     
-    def update_step(self, z_camera=None, z_radar=None, R_camera=None, R_radar=None)
+    def update_step(self, z_camera=None, z_radar=None, R_camera=None, R_radar=None):
         if z_camera is not None:
             self.update(z_camera, R_camera, sensor='camera')
         if z_radar is not None:
@@ -303,6 +307,7 @@ class SensorMeasurementModel():
 
         if R is not None:
             self.set_R(R)
+
 
 class RadarMeasurementModel(SensorMeasurementModel):
     def __init__(self, state_dim, sensor_dim):
