@@ -95,7 +95,7 @@ class Tracker():
         states_b_pose = np.asarray([[state[0], state[1]] for state in states_b])
         
         # Formulate cost matrix
-        cost = distance.cdist(states_a_pose, states_b_pose, 'euclidean')
+        cost = distance.cdist(states_c_pose, states_r_pose, 'euclidean')
         row_ind, col_ind = linear_sum_assignment(cost)  
         
         # Associate the indices and along with gating

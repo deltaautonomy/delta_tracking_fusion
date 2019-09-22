@@ -85,8 +85,9 @@ def tracking_fusion_pipeline(camera_msg, radar_msg, state_msg, publishers, vis=T
     # Log pipeline FPS
     all_fps.lap()
 
-    # Object detection
+    # Tracker update
     tracker_fps.lap()
+    inputs = get_tracker_inputs(camera_msg, radar_msg, state_msg)
     tracks = tracker.update(inputs)
     tracker_fps.tick()
 
