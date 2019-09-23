@@ -3,7 +3,9 @@
 #####                   Written By: Karmesh Yadav                   #####
 #####                         Date: 09/09/19                        #####
 #########################################################################
-from __future__ import division
+
+# Python 2/3 compatibility
+from __future__ import print_function, absolute_import, division
 import numpy as np
 import time
 import math
@@ -11,7 +13,8 @@ import pdb
 
 # A class for Kalman Filter which can take more than 1 sensor as input
 class KalmanFilterRADARCamera():
-    def __init__(self, vehicle_id, state_dim, camera_dim, radar_dim, control_dim, dt, first_call_time, motion_model='velocity', verbose=True):
+    def __init__(self, vehicle_id, state_dim, camera_dim, radar_dim, control_dim,
+        dt, first_call_time, motion_model='velocity', verbose=False):
         """
         Initializes the kalman filter class 
         @param: vehicle_id - the id given to the vehicle track
@@ -30,7 +33,7 @@ class KalmanFilterRADARCamera():
         self.motion_model = motion_model
         self.verbose = verbose
 
-        # Filter State estimate [x, vx, y, vy]
+        # Filter State estimate [x, y, vx, vy]
         self.x = np.zeros((state_dim, 1))
         # State Transition matrix
         self.F = np.eye(state_dim)
@@ -42,14 +45,14 @@ class KalmanFilterRADARCamera():
         self.Q = np.eye(state_dim)
         # Camera Measurement Model [x, y]
         self.camera = SensorMeasurementModel(state_dim, camera_dim)
-        # Radar Measurement Model [x, vx, y, vy]
+        # Radar Measurement Model [x, y, vx, vy]
         self.radar = SensorMeasurementModel(state_dim, radar_dim)
         # self.radar = RadarMeasurementModel(state_dim, radar_dim)
         self.initialize_filter(sigma_acc=8.8)
 
         self.id = vehicle_id
-        self.time_since_update = 0 
-        self.age = 0 # 
+        self.time_since_update = 0
+        self.age = 0
         self.last_call_time = first_call_time
 
 
@@ -75,33 +78,25 @@ class KalmanFilterRADARCamera():
         self.Q = np.matmul(G.T, G) * sigma_acc**2
 
         H_camera = np.array([[1, 0, 0, 0],
-                             [0, 0, 1, 0]])
+                             [0, 1, 0, 0]])
         self.camera.set_H(H_camera)
 
-        R_camera = np.array([[1, 0],
-                             [0, 1]])
+        R_camera = np.eye(2)
         self.camera.set_R(R_camera)
 
-        H_radar = np.array([[1, 0, 0, 0], 
-                            [0, 1, 0, 0], 
-                            [0, 0, 1, 0],
-                            [0, 0, 0, 1]])
-        
-
+        H_radar = np.eye(4)
         self.radar.set_H(H_radar)
-        R_radar = np.array([[1, 0, 0, 0],
-                            [0, 1, 0, 0], 
-                            [0, 0, 1, 0],
-                            [0, 0, 0, 1]])
+        
+        R_radar = np.eye(4)
         self.radar.set_R(R_radar)
-        if self.verbose == True:
+        
+        if self.verbose:
             print("==========================Predict Function==========================")
-            print ("_____State_____ \n", self.x )
-            print ("_____covariance_____\n", self.P)
-            print ("_____State Transition_____\n", self.F)
-            print ("_____Process Noise_____\n", self.Q)
-            print ("_____Control Transition_____\n", self.B)
-
+            print("_____State_____ \n", self.x )
+            print("_____covariance_____\n", self.P)
+            print("_____State Transition_____\n", self.F)
+            print("_____Process Noise_____\n", self.Q)
+            print("_____Control Transition_____\n", self.B)
 
     def predict(self, time_step, u=None):
         """
@@ -126,10 +121,10 @@ class KalmanFilterRADARCamera():
             self.x = np.matmul(self.F,self.x) + np.matmul(self.B, u)
             self.P = np.matmul(self.F, np.matmul(self.P, self.F.T)) + self.Q
 
-        if self.verbose == True:
+        if self.verbose:
             print("==========================Predict Function==========================")
-            print ("_____State_____ \n", self.x) 
-            print ("_____covariance_____\n", self.P)
+            print("_____State_____ \n", self.x )
+            print("_____covariance_____\n", self.P)
 
     def constant_velocity_motion_model(self, time_step):
         """
@@ -165,16 +160,13 @@ class KalmanFilterRADARCamera():
 
         if sensor == 'radar':
             assert (z.shape == (self.radar_dim,1)), "The data input dimension is incorrect"
-            # H = self.radar.get_H(self.x)
             H = self.radar.H
             if R_current is not None:
                 self.radar.set_R(R_current)
                 R = R_current
             else:
                 R = self.radar.R
-            # Y = z - self.radar.measurement_function(self.x)
             Y = z - np.matmul(H, self.x)
-
             
         else:
             assert (z.shape == (self.camera_dim,1)), "The data input dimension is incorrect"
@@ -192,12 +184,13 @@ class KalmanFilterRADARCamera():
         self.x = self.x + np.matmul(K, Y)
         KH = np.matmul(K, H)
         self.P = np.matmul((np.eye(KH.shape[0]) - KH), self.P)
-        if self.verbose == True:
+        
+        if self.verbose:
             print("==========================Update Function [{}] ==========================".format(sensor))
-            print ("_____State_____ \n", self.x )
-            print ("_____covariance_____\n", self.P)
-            print ("_____Error_____\n", Y)
-            print ("_____Kalman_Gain_____\n", K)
+            print("_____State_____ \n", self.x)
+            print("_____covariance_____\n", self.P)
+            print("_____Error_____\n", Y)
+            print("_____Kalman_Gain_____\n", K)
             
     def predict_step(self, current_time):
         """
@@ -267,7 +260,6 @@ class SensorMeasurementModel():
         py = state[2][0]
         vx = state[1][0]
         vy = state[3][0]
-        # pdb.set_trace()
         c1 = (px**2 + py**2)
         c2 = vx*py - px*vy
 
@@ -288,11 +280,11 @@ if __name__ == "__main__":
                                  control_dim=0, 
                                  dt=0.1, 
                                  first_call_time=0)
-    # KF.predict()
-    # KF.update(np.array([[1],[3],[4]]), 'radar')#, np.array([[1000, 0],[0, 1000]]))
+
     R = np.array([[10,  0,  0,  0],
                   [ 0, 10,  0,  0], 
                   [ 0,  0, 10,  0],
                   [ 0,  0,  0, 10]])
+
     KF.predict_step(1.05)
     KF.update_step(z_camera=np.array([[1],[3]]), z_radar=np.array([[3.1],[1.3],[1.5],[1.5]]), R_radar=R)
