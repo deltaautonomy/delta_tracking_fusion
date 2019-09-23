@@ -14,7 +14,7 @@ import pdb
 # A class for Kalman Filter which can take more than 1 sensor as input
 class KalmanFilterRADARCamera():
     def __init__(self, vehicle_id, state_dim, camera_dim, radar_dim, control_dim,
-        dt, first_call_time, motion_model='velocity', verbose=False):
+        dt, first_call_time, verbose=False):
         """
         Initializes the kalman filter class 
         @param: vehicle_id - the id given to the vehicle track
@@ -30,7 +30,6 @@ class KalmanFilterRADARCamera():
         self.camera_dim = camera_dim
         self.radar_dim = radar_dim
         self.control_dim = control_dim
-        self.motion_model = motion_model
         self.verbose = verbose
 
         # Filter State estimate [x, y, vx, vy]
@@ -65,15 +64,9 @@ class KalmanFilterRADARCamera():
 
         T = self.dt
 
-        if self.motion_model == 'velocity':
-            assert (self.F.shape == (4, 4)), "The state dimension is incorrect"
-            self.x +=0.000001
-            self.F, self.P, self.B, G = self.constant_velocity_motion_model(self.dt)
-
-        else:
-            assert (self.F.shape == (6, 6)), "The state dimension is incorrect"
-            self.x += 1
-            self.F, self.P, self.B, G = self.constant_acceleration_motion_model(self.dt)
+        assert (self.F.shape == (4, 4)), "The state dimension is incorrect"
+        self.x +=0.000001
+        self.F, self.P, self.B, G = self.constant_velocity_motion_model(self.dt)
 
         self.Q = np.matmul(G.T, G) * sigma_acc**2
 
@@ -108,10 +101,7 @@ class KalmanFilterRADARCamera():
         self.age += 1
         self.time_since_update += 1 
 
-        if self.motion_model == 'velocity':
-            self.F, _, _, _ = self.constant_velocity_motion_model(time_step)
-        else:
-            self.F, _, _, _ = self.constant_acceleration_motion_model(time_step)
+        self.F, _, _, _ = self.constant_velocity_motion_model(time_step)
 
         if u is None:
             self.x = np.matmul(self.F,self.x)
@@ -133,9 +123,9 @@ class KalmanFilterRADARCamera():
         @param: time_step - the time step to calculate the matrices at
         """
         T = time_step
-        F = np.array([[1, T, 0, 0], 
-                      [0, 1, 0, 0], 
-                      [0, 0, 1, T], 
+        F = np.array([[1, 0, T, 0], 
+                      [0, 1, 0, T], 
+                      [0, 0, 1, 0], 
                       [0, 0, 0, 1]])
         
         P = np.array([[1000.0,      0,      0,      0], 
@@ -143,10 +133,10 @@ class KalmanFilterRADARCamera():
                       [     0,      0, 1000.0,      0],
                       [     0,      0,      0, 1000.0]])
 
-        B = np.array([[0, 1, 0, 0],
+        B = np.array([[0, 0, 1, 0],
                       [0, 0, 0, 1]])
 
-        G = np.array([0.5*T**2, T, 0.5*T**2, T])
+        G = np.array([[0.5*T**2, 0.5*T**2, T, T]])
 
         return F, P, B, G
 
@@ -279,12 +269,13 @@ if __name__ == "__main__":
                                  radar_dim=4, 
                                  control_dim=0, 
                                  dt=0.1, 
-                                 first_call_time=0)
+                                 first_call_time=0,
+                                 verbose=True)
 
-    R = np.array([[10,  0,  0,  0],
-                  [ 0, 10,  0,  0], 
-                  [ 0,  0, 10,  0],
-                  [ 0,  0,  0, 10]])
+    R = np.array([[ 1,  0,  0,  0],
+                  [ 0,  1,  0,  0], 
+                  [ 0,  0,  1,  0],
+                  [ 0,  0,  0,  1]])
 
     KF.predict_step(1.05)
-    KF.update_step(z_camera=np.array([[1],[3]]), z_radar=np.array([[3.1],[1.3],[1.5],[1.5]]), R_radar=R)
+    KF.update_step(z_camera=np.array([[1],[3]]), z_radar=np.array([[1.2],[4.2],[1.5],[1.5]]), R_radar=R)
