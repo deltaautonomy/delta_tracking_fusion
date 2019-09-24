@@ -2,8 +2,8 @@
 # -*- coding: utf-8 -*-
 
 '''
-Author  : Apoorv Singh
-Email   : apoorvs@andrew.cmu.edu
+Author  : Heethesh Vhavle
+Email   : heethesh@cmu.edu
 Version : 1.0.0
 Date    : Sep 17, 2019
 '''
@@ -159,9 +159,6 @@ def run(**kwargs):
     # Start node
     rospy.init_node('tracking_fusion_pipeline', anonymous=True)
     rospy.loginfo('Current PID: [%d]' % os.getpid())
-
-    # Setup validation
-    validation_setup()
 
     # Handle params and topics
     camera_track = rospy.get_param('~camera_track', '/delta/perception/ipm/camera_track')
