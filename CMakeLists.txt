@@ -12,6 +12,7 @@ find_package(catkin REQUIRED COMPONENTS
   sensor_msgs
   visualization_msgs
   message_generation
+  delta_prediction
 )
 
 ################################################
@@ -25,6 +26,10 @@ add_message_files(
     TrackArray.msg
 )
 
+generate_messages(
+  DEPENDENCIES
+  std_msgs
+)
 
 ###################################
 ## catkin specific configuration ##
