@@ -52,6 +52,7 @@ class Tracklet():
 
         # Sensor fusion
         self.state = None
+        self.state_cov = None
         self.last_update_time = timestamp
         self.filter = KalmanFilterRADARCamera(vehicle_id=self.track_id,
                                               state_dim=4,
@@ -66,6 +67,7 @@ class Tracklet():
     def predict(self, timestamp):
         self.age += 1
         self.state = self.filter.predict_step(timestamp)
+        self.state_cov = self.filter.P
 
     def update(self, timestamp, z_radar=None, z_camera=None):
         assert not(z_radar is None and z_camera is None), \
@@ -75,6 +77,7 @@ class Tracklet():
         if timestamp > self.last_update_time: self.hits += 1
         self.state = self.filter.update_step(z_radar=z_radar, z_camera=z_camera,
                                              R_radar=self.R_radar, R_camera=self.R_camera)
+        self.state_cov = self.filter.P
         self.last_update_time = timestamp
 
 
@@ -254,25 +257,21 @@ class Tracker():
                 del self.tracks[track_id]            
 
         # Return confident tracklets
-        fused_tracks = []
+        fused_tracks = {}
         for track_id in self.tracks:
             if self.tracks[track_id].hits >= self.hit_window:
-                fused_tracks.append(np.r_[self.tracks[track_id].state.copy(), track_id])
+                fused_tracks[track_id] = {}
+                fused_tracks[track_id]['state'] = self.tracks[track_id].state.copy()
+                fused_tracks[track_id]['state_cov'] = self.tracks[track_id].state_cov.copy()
 
         # Store data for the next timestep 
         self.prev_ego_state = inputs['ego_state']
         self.prev_timestamp = inputs['timestamp']
 
-        return np.asarray(fused_tracks)
+        return fused_tracks
 
 
-if __name__ == '__main__':
-    # R = np.array([[10,  0,  0,  0],
-    #           [ 0, 10,  0,  0], 
-    #           [ 0,  0, 10,  0],
-    #           [ 0,  0,  0, 10]])
-    # mot_tracker = Tracker(R)
-    
+if __name__ == '__main__':    
     tracker = Tracker()
 
     # Data association test
