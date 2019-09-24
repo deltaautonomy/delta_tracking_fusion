@@ -27,7 +27,7 @@ import message_filters
 from radar_msgs.msg import RadarTrack, RadarTrackArray
 from delta_perception.msg import CameraTrack, CameraTrackArray
 from delta_prediction.msg import EgoStateEstimate
-from delta_tracking_fusion.msg import FusedTrack, FusedTrackArray
+from delta_tracking_fusion.msg import Track, TrackArray
 
 # Local python modules
 from utils import *
@@ -135,11 +135,11 @@ def run(**kwargs):
     rospy.loginfo('CameraTrackArray topic: %s' % camera_track)
     rospy.loginfo('RadarTrackArray topic: %s' % radar_track)
     rospy.loginfo('EgoStateEstimate topic: %s' % ego_state)
-    rospy.loginfo('FusedTrackArray topic: %s' % fused_track)
+    rospy.loginfo('TrackArray topic: %s' % fused_track)
 
     # Publish output topic
     publishers = {}
-    publishers['track_pub'] = rospy.Publisher(fused_track, FusedTrackArray, queue_size=5)
+    publishers['track_pub'] = rospy.Publisher(fused_track, TrackArray, queue_size=5)
 
     # Subscribe to topics
     camera_sub = message_filters.Subscriber(camera_track, CameraTrackArray)
