@@ -80,7 +80,7 @@ def get_tracker_inputs(camera_msg, radar_msg, state_msg):
         state_msg.pose.position.y,
         ego_state.twist.linear.x,
         ego_state.twist.linear.y,
-        orientation_to_rpy(ego_state.twist.orientation)[2]
+        ego_state.twist.angular.z
     ])
 
     return inputs
@@ -113,7 +113,7 @@ def tracking_fusion_pipeline(camera_msg, radar_msg, state_msg, publishers, vis=T
         tracker_msg.vx = state[2]
         tracker_msg.vy = state[3]
         tracker_msg.track_id = int(track_id)
-        tracker_msg.state_cov = state_cov.flatten()
+        tracker_msg.state_cov = state_cov.flatten().tolist()
         tracker_msg.label = 'vehicle'
         tracker_array_msg.tracks.append(tracker_msg)
 
