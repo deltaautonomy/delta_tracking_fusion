@@ -24,6 +24,8 @@ import rospy
 import message_filters
 
 # ROS messages
+from nav_msgs.msg import OccupancyGrid
+from visualization_msgs.msg import Marker
 from radar_msgs.msg import RadarTrack, RadarTrackArray
 from delta_perception.msg import CameraTrack, CameraTrackArray
 from delta_prediction.msg import EgoStateEstimate
@@ -32,6 +34,8 @@ from delta_tracking_fusion.msg import Track, TrackArray
 # Local python modules
 from utils import *
 from tracker import Tracker
+from delta_perception.scripts.cube_marker_publisher import make_label
+from delta_perception.scripts.occupancy_grid import OccupancyGridGenerator
 
 # Global objects
 STOP_FLAG = False
@@ -44,6 +48,7 @@ EGO_VEHICLE_FRAME = 'ego_vehicle'
 
 # Classes
 tracker = Tracker()
+occupancy_grid = OccupancyGridGenerator(30, 100, EGO_VEHICLE_FRAME, 0.1)
 
 # FPS loggers
 FRAME_COUNT = 0
@@ -90,6 +95,26 @@ def tracking_fusion_pipeline(camera_msg, radar_msg, state_msg, publishers, vis=T
     tracks = tracker.update(inputs)
     tracker_fps.tick()
 
+    # Create occupancy grid and label messages
+    grid = occupancy_grid.empty_grid()
+    for track_id in tracks:
+        state = tracks[track_id]['state']
+        state_cov = tracks[track_id]['state_cov']
+        # todo: does x, y position for label need to flipped?
+        label_msg = make_label(text='ID: ' + str(track_id), position=np.r_[state[:2], 1], marker_id=track_id)
+        grid = occupancy_grid.place_gaussian(state[:2], state_cov[:2, :2], 100, grid)
+
+    # For debugging without Rviz
+    # plt.imshow(grid)
+    # plt.show()
+
+    # todo: publish TrackArray message also
+
+    # Publish messages
+    grid_msg = occupancy_grid.refresh(grid, radar_msg.header.stamp)
+    publishers['occupancy_pub'].publish(grid_msg)
+    publishers['marker_pub'].publish(label_msg)
+
     # Display FPS logger status
     all_fps.tick()
     sys.stdout.write('\r%s ' % (tracker_fps.get_log()))
@@ -129,17 +154,23 @@ def run(**kwargs):
     camera_track = rospy.get_param('~camera_track', '/delta/perception/ipm/camera_track')
     radar_track = rospy.get_param('~radar_track', '/carla/ego_vehicle/radar/tracks')
     ego_state = rospy.Publisher('~ego_state', '/delta/prediction/ego_vehicle/state')
-    fused_track = rospy.get_param('~radar_track', '/delta/tracking_fusion/tracker/tracks')
+    fused_track = rospy.get_param('~fused_track', '/delta/tracking_fusion/tracker/tracks')
+    occupancy_topic = rospy.get_param('~occupancy_topic', '/delta/tracking_fusion/tracker/occupancy_grid')
+    track_marker = rospy.get_param('~track_marker', '/delta/tracking_fusion/tracker/track_id_marker')
 
     # Display params and topics
     rospy.loginfo('CameraTrackArray topic: %s' % camera_track)
     rospy.loginfo('RadarTrackArray topic: %s' % radar_track)
     rospy.loginfo('EgoStateEstimate topic: %s' % ego_state)
     rospy.loginfo('TrackArray topic: %s' % fused_track)
+    rospy.loginfo('OccupancyGrid topic: %s' % occupancy_topic)
+    rospy.loginfo('Track ID Marker topic: %s' % track_marker)
 
     # Publish output topic
     publishers = {}
     publishers['track_pub'] = rospy.Publisher(fused_track, TrackArray, queue_size=5)
+    publishers['occupancy_pub'] = rospy.Publisher(occupancy_topic, OccupancyGrid, queue_size=5)
+    publishers['marker_pub'] = rospy.Publisher(track_marker, Marker, queue_size=5)
 
     # Subscribe to topics
     camera_sub = message_filters.Subscriber(camera_track, CameraTrackArray)
