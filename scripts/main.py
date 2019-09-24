@@ -95,8 +95,9 @@ def tracking_fusion_pipeline(camera_msg, radar_msg, state_msg, publishers, vis=T
     tracks = tracker.update(inputs)
     tracker_fps.tick()
 
-    # Create occupancy grid and label messages
+    # Generate ROS messages
     grid = occupancy_grid.empty_grid()
+    tracker_array_msg = TrackArray()
     for track_id in tracks:
         state = tracks[track_id]['state']
         state_cov = tracks[track_id]['state_cov']
@@ -104,16 +105,27 @@ def tracking_fusion_pipeline(camera_msg, radar_msg, state_msg, publishers, vis=T
         label_msg = make_label(text='ID: ' + str(track_id), position=np.r_[state[:2], 1], marker_id=track_id)
         grid = occupancy_grid.place_gaussian(state[:2], state_cov[:2, :2], 100, grid)
 
+        # Tracker message
+        tracker_msg = Tracker()
+        tracker_msg.x = state[0]
+        tracker_msg.y = state[1]
+        tracker_msg.vx = state[2]
+        tracker_msg.vy = state[3]
+        tracker_msg.track_id = int(track_id)
+        tracker_msg.state_cov = state_cov.flatten()
+        tracker_msg.label = 'vehicle'
+        tracker_array_msg.tracks.append(tracker_msg)
+
     # For debugging without Rviz
     # plt.imshow(grid)
     # plt.show()
 
-    # todo: publish TrackArray message also
-
     # Publish messages
     grid_msg = occupancy_grid.refresh(grid, radar_msg.header.stamp)
+    tracker_array_msg.header.stamp = radar_msg.header.stamp
     publishers['occupancy_pub'].publish(grid_msg)
     publishers['marker_pub'].publish(label_msg)
+    publishers['tracker_pub'].publish(tracker_array_msg)
 
     # Display FPS logger status
     all_fps.tick()
