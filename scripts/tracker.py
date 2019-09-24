@@ -111,19 +111,20 @@ class Tracker():
             track_ids.append(track_id)
         return np.r_[states, track_ids]
 
-    def motion_compensate(self, ego_state, timestamp, track_states):
+    def motion_compensate(self, ego_state, timestamp, track_states, inverse=False):
         # ego_state: [x, y, vx, vy, yaw_rate]
         dt = timestamp - self.prev_timestamp
         vx_dt = ego_state[2] * dt
         vy_dt = ego_state[3] * dt
         dyaw_dt = ego_state[4] * dt
 
-        # todo(heethesh): To invert H or not to?
         H = np.asarray([
-             np.cos(dyaw_dt), np.sin(dyaw_dt), vx_dt,
-            -np.sin(dyaw_dt), np.cos(dyaw_dt), vy_dt,
-                           0,               0,     1
+            np.cos(dyaw_dt), -np.sin(dyaw_dt), vx_dt,
+            np.sin(dyaw_dt),  np.cos(dyaw_dt), vy_dt,
+                          0,                0,     1
         ])
+
+        if inverse: H = np.linalg.inv(H)
 
         # Transform the state poses
         # track_state: [x, y, vx, vy, id]
