@@ -102,7 +102,8 @@ def tracking_fusion_pipeline(camera_msg, radar_msg, state_msg, publishers, vis=T
         state = tracks[track_id]['state']
         state_cov = tracks[track_id]['state_cov']
         # todo: does x, y position for label need to flipped?
-        label_msg = make_label(text='ID: ' + str(track_id), position=np.r_[state[:2], 1], marker_id=track_id)
+        label_msg = make_label('ID: ' + str(track_id), np.r_[state[:2], 1],
+            frame_id=EGO_VEHICLE_FRAME, marker_id=track_id)
         grid = occupancy_grid.place_gaussian(state[:2], state_cov[:2, :2], 100, grid)
 
         # Tracker message
