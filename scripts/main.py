@@ -78,9 +78,9 @@ def get_tracker_inputs(camera_msg, radar_msg, state_msg):
     inputs['ego_state'] = np.asarray([
         state_msg.pose.position.x,
         state_msg.pose.position.y,
-        ego_state.twist.linear.x,
-        ego_state.twist.linear.y,
-        ego_state.twist.angular.z
+        state_msg.twist.linear.x,
+        state_msg.twist.linear.y,
+        state_msg.twist.angular.z
     ])
 
     return inputs
