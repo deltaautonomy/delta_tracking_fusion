@@ -156,7 +156,6 @@ def shutdown_hook():
     STOP_FLAG = True
     time.sleep(3)
     print('\n\033[95m' + '*' * 30 + ' Delta Tracking and Fusion Shutdown ' + '*' * 30 + '\033[00m\n')
-    # print('Tracking results - MOTA:') #TODO
 
 
 def run(**kwargs):

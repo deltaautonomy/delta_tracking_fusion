@@ -3,8 +3,7 @@ Panels:
     Help Height: 78
     Name: Displays
     Property Tree Widget:
-      Expanded:
-        - /Occupancy Grid (Tracking)1
+      Expanded: ~
       Splitter Ratio: 0.5
     Tree Height: 343
   - Class: rviz/Selection
@@ -31,24 +30,6 @@ Toolbars:
 Visualization Manager:
   Class: ""
   Displays:
-    - Alpha: 0.5
-      Cell Size: 1
-      Class: rviz/Grid
-      Color: 160; 160; 164
-      Enabled: true
-      Line Style:
-        Line Width: 0.0299999993
-        Value: Lines
-      Name: Grid
-      Normal Cell Count: 0
-      Offset:
-        X: 0
-        Y: 0
-        Z: 0
-      Plane: XY
-      Plane Cell Count: 10
-      Reference Frame: <Fixed Frame>
-      Value: true
     - Angle Tolerance: 0.100000001
       Class: rviz/Odometry
       Covariance:
@@ -127,6 +108,14 @@ Visualization Manager:
         "": true
       Queue Size: 100
       Value: true
+    - Class: rviz/Marker
+      Enabled: true
+      Marker Topic: /delta/prediction/ego
+      Name: Ego Prediction Trajectory
+      Namespaces:
+        predicted_trajectory: true
+      Queue Size: 100
+      Value: true
     - Alpha: 0.699999988
       Class: rviz/Map
       Color Scheme: raw
@@ -139,8 +128,8 @@ Visualization Manager:
       Value: true
     - Alpha: 0.699999988
       Class: rviz/Map
-      Color Scheme: map
-      Draw Behind: false
+      Color Scheme: costmap
+      Draw Behind: true
       Enabled: false
       Name: Occupancy Grid (Perception)
       Topic: /delta/perception/occupancy_grid
@@ -172,25 +161,25 @@ Visualization Manager:
   Views:
     Current:
       Class: rviz/Orbit
-      Distance: 33.8150482
+      Distance: 28.9064045
       Enable Stereo Rendering:
         Stereo Eye Separation: 0.0599999987
         Stereo Focal Distance: 1
         Swap Stereo Eyes: false
         Value: false
       Focal Point:
-        X: 4.4073844
-        Y: -0.625972927
-        Z: 8.45791817
+        X: 4.38763952
+        Y: -0.0264430922
+        Z: 8.41060066
       Focal Shape Fixed Size: true
       Focal Shape Size: 0.0500000007
       Invert Z Axis: false
       Name: Current View
       Near Clip Distance: 0.00999999978
-      Pitch: 0.514797449
+      Pitch: 0.434797525
       Target Frame: <Fixed Frame>
       Value: Orbit (rviz)
-      Yaw: 3.14786839
+      Yaw: 3.13786769
     Saved: ~
 Window Geometry:
   Displays:
