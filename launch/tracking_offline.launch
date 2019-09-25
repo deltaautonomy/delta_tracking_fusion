@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<launch>
+
+    <!-- Play rosbag record -->
+    <include file="$(find delta_perception)/launch/play_rosbag.launch">
+        <arg name="filename" value="$(find delta_perception)/bags/perception-pipeline-01.bag" />
+    </include>
+
+    <node
+        pkg="delta_tracking_fusion"
+        type="main.py"
+        name="main_tracking"
+        output="screen">
+    </node>
+
+    <node
+        type="rviz" name="rviz" pkg="rviz" args="-d $(find delta_tracking_fusion)/tracking_fusion.rviz">
+    </node>
+
+</launch>

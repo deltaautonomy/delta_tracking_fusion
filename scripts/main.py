@@ -15,6 +15,7 @@ from __future__ import print_function, absolute_import, division
 from init_paths import *
 
 # Built-in modules
+import pprint
 
 # External modules
 import matplotlib.pyplot as plt
@@ -34,8 +35,8 @@ from delta_tracking_fusion.msg import Track, TrackArray
 # Local python modules
 from utils import *
 from tracker import Tracker
-from delta_perception.scripts.cube_marker_publisher import make_label
-from delta_perception.scripts.occupancy_grid import OccupancyGridGenerator
+from scripts.cube_marker_publisher import make_label
+from scripts.occupancy_grid import OccupancyGridGenerator
 
 # Global objects
 STOP_FLAG = False
@@ -47,13 +48,14 @@ RADAR_FRAME = '/ego_vehicle/radar'
 EGO_VEHICLE_FRAME = 'ego_vehicle'
 
 # Classes
+pp = pprint.PrettyPrinter(indent=4)
 tracker = Tracker()
 occupancy_grid = OccupancyGridGenerator(30, 100, EGO_VEHICLE_FRAME, 0.1)
 
 # FPS loggers
 FRAME_COUNT = 0
 tracker_fps = FPSLogger('Tracker')
-
+all_fps = FPSLogger('All')
 
 ########################### Functions ###########################
 
@@ -64,16 +66,18 @@ def validate(tracks):
 
 def get_tracker_inputs(camera_msg, radar_msg, state_msg):
     inputs = {'camera': [], 'radar': [], 'ego_state': []}
-    inputs['timestamp'] = state_msg.header.stamp
+    inputs['timestamp'] = state_msg.header.stamp.to_sec()
     
     for track in camera_msg.tracks:
         inputs['camera'].append(np.asarray([track.x, track.y]))
+    inputs['camera'] = np.asarray(inputs['camera'])
 
     for track in radar_msg.tracks:
         pos_msg = position_to_numpy(track.track_shape.points[0])
         # todo(prateek): trasnform this radar data to ego vehicle frame
         inputs['radar'].append(np.asarray([pos_msg[0] - 2.2, pos_msg[1],
             track.linear_velocity.x, track.linear_velocity.y]))
+    inputs['radar'] = np.asarray(inputs['radar'])
 
     inputs['ego_state'] = np.asarray([
         state_msg.pose.position.x,
@@ -84,6 +88,7 @@ def get_tracker_inputs(camera_msg, radar_msg, state_msg):
     ])
 
     return inputs
+
 
 def tracking_fusion_pipeline(camera_msg, radar_msg, state_msg, publishers, vis=True, **kwargs):
     # Log pipeline FPS
@@ -98,24 +103,24 @@ def tracking_fusion_pipeline(camera_msg, radar_msg, state_msg, publishers, vis=T
     # Generate ROS messages
     grid = occupancy_grid.empty_grid()
     tracker_array_msg = TrackArray()
+    label_msg = None
     for track_id in tracks:
         state = tracks[track_id]['state']
         state_cov = tracks[track_id]['state_cov']
-        # todo: does x, y position for label need to flipped?
         label_msg = make_label('ID: ' + str(track_id), np.r_[state[:2], 1],
             frame_id=EGO_VEHICLE_FRAME, marker_id=track_id)
-        grid = occupancy_grid.place_gaussian(state[:2], state_cov[:2, :2], 100, grid)
+        grid = occupancy_grid.place_gaussian(state[:2][::-1], np.flip(state_cov[:2, :2]), 100, grid)
 
         # Tracker message
-        tracker_msg = Tracker()
-        tracker_msg.x = state[0]
-        tracker_msg.y = state[1]
-        tracker_msg.vx = state[2]
-        tracker_msg.vy = state[3]
-        tracker_msg.track_id = int(track_id)
-        tracker_msg.state_cov = state_cov.flatten().tolist()
-        tracker_msg.label = 'vehicle'
-        tracker_array_msg.tracks.append(tracker_msg)
+        # tracker_msg = Track()
+        # tracker_msg.x = state[0]
+        # tracker_msg.y = state[1]
+        # tracker_msg.vx = state[2]
+        # tracker_msg.vy = state[3]
+        # tracker_msg.track_id = int(track_id)
+        # tracker_msg.state_cov = state_cov.flatten().tolist()
+        # tracker_msg.label = 'vehicle'
+        # tracker_array_msg.tracks.append(tracker_msg)
 
     # For debugging without Rviz
     # plt.imshow(grid)
@@ -123,16 +128,15 @@ def tracking_fusion_pipeline(camera_msg, radar_msg, state_msg, publishers, vis=T
 
     # Publish messages
     grid_msg = occupancy_grid.refresh(grid, radar_msg.header.stamp)
-    tracker_array_msg.header.stamp = radar_msg.header.stamp
     publishers['occupancy_pub'].publish(grid_msg)
-    publishers['marker_pub'].publish(label_msg)
-    publishers['tracker_pub'].publish(tracker_array_msg)
+    if label_msg is not None: publishers['marker_pub'].publish(label_msg)
+    # tracker_array_msg.header.stamp = radar_msg.header.stamp
+    # publishers['track_pub'].publish(tracker_array_msg)
 
     # Display FPS logger status
     all_fps.tick()
     sys.stdout.write('\r%s ' % (tracker_fps.get_log()))
     sys.stdout.flush()
-
     return tracks
 
 
@@ -157,13 +161,13 @@ def shutdown_hook():
 
 def run(**kwargs):
     # Start node
-    rospy.init_node('tracking_fusion_pipeline', anonymous=True)
+    # rospy.init_node('tracking_fusion_pipeline', anonymous=False)
     rospy.loginfo('Current PID: [%d]' % os.getpid())
 
     # Handle params and topics
     camera_track = rospy.get_param('~camera_track', '/delta/perception/ipm/camera_track')
     radar_track = rospy.get_param('~radar_track', '/carla/ego_vehicle/radar/tracks')
-    ego_state = rospy.Publisher('~ego_state', '/delta/prediction/ego_vehicle/state')
+    ego_state = rospy.get_param('~ego_state', '/delta/prediction/ego_vehicle/state')
     fused_track = rospy.get_param('~fused_track', '/delta/tracking_fusion/tracker/tracks')
     occupancy_topic = rospy.get_param('~occupancy_topic', '/delta/tracking_fusion/tracker/occupancy_grid')
     track_marker = rospy.get_param('~track_marker', '/delta/tracking_fusion/tracker/track_id_marker')
@@ -204,4 +208,5 @@ def run(**kwargs):
 
 if __name__ == '__main__':
     # Start tracking fusion node
+    rospy.init_node('tracking_fusion_pipeline')
     run()

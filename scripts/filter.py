@@ -198,9 +198,9 @@ class KalmanFilterRADARCamera():
     
     def update_step(self, z_camera=None, z_radar=None, R_camera=None, R_radar=None):
         if z_camera is not None:
-            self.update(z_camera, R_camera, sensor='camera')
+            self.update(z_camera.reshape(-1, 1), R_camera, sensor='camera')
         if z_radar is not None:
-            self.update(z_radar, R_radar, sensor='radar')
+            self.update(z_radar.reshape(-1, 1), R_radar, sensor='radar')
         return self.x
 
     def get_state(self):

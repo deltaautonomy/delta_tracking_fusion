@@ -50,7 +50,7 @@ import numpy as np
 THIS_PATH = os.path.dirname(os.path.abspath(inspect.getfile(inspect.currentframe())))
 PKG_PATH = os.path.dirname(THIS_PATH)
 add_path(PKG_PATH)
-# add_path("/mnt/data/Workspaces/delta_workspace/src/delta_perception/")
+add_path("/mnt/data/Workspaces/delta_workspace/src/delta_perception")
 # Display paths
 print('Package Path:', PKG_PATH)
 
