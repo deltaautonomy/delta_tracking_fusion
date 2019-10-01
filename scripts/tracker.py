@@ -91,7 +91,7 @@ class Tracker():
         self.tracks = {}
         self.hit_window = hit_window
         self.miss_window = miss_window
-        self.radar_noise = np.eye(4) * 100
+        self.radar_noise = np.eye(4) * 10
         self.prev_ego_state = None
         self.prev_timestamp = None #TODO Change this to something valid
 
@@ -120,6 +120,7 @@ class Tracker():
         return np.c_[states, track_ids]
 
     def motion_compensate(self, ego_state, timestamp, track_states, inverse=False):
+        return track_states
         # ego_state: [x, y, vx, vy, yaw_rate]
         dt = (timestamp - self.prev_timestamp)
         vx_dt = ego_state[2] * dt
@@ -147,8 +148,15 @@ class Tracker():
         #------------------- PREDICT / MOTION COMPENSATE -------------------#
 
         # Predict new states for all tracklets for the next timestep
+        # print ("====================== New loop =======================")
         for track_id in self.tracks:
+            pass
+            # print ("Original state: ")
+            # print (" ID : ", self.tracks[track_id].track_id, "State is: ", self.tracks[track_id].state)
+            # print ("Predicted state: ")
             self.tracks[track_id].predict(inputs['timestamp'])
+            # print (" ID : ", self.tracks[track_id].track_id, "State is: ", self.tracks[track_id].state)
+
 
         # Transform all tracklet states by ego motion
         if self.prev_timestamp is not None:
@@ -161,6 +169,9 @@ class Tracker():
         # Assign temporary ID for each detection to keep track of its association status
         radar_dets = np.c_[inputs['radar'], np.arange(len(inputs['radar']))]
         camera_dets = np.c_[inputs['camera'], np.arange(len(inputs['camera']))]
+        # print ("radar dets", radar_dets)
+        # print ("camera dets", camera_dets)
+        camera_dets = np.asarray([])
         
         # Keep the status of which measurements are being used and not
         radar_matched_ids, camera_matched_ids = set(), set()
@@ -171,7 +182,7 @@ class Tracker():
 
         if len(track_states_comp) and len(radar_dets):
             # Temporal data association using RADAR detections with compensated states
-            matched_radar_dets = self.data_association(radar_dets, track_states_comp)
+            matched_radar_dets = self.data_association(radar_dets, track_states_comp, gating_threshold=20)
             # print('matched_radar_dets', len(matched_radar_dets))
 
             # Update tracklets with RADAR measurements
@@ -221,6 +232,7 @@ class Tracker():
             # Create new tracklets if we got matches
             for meas in matched_camera_radar_dets:
                 new_track = Tracklet(inputs['timestamp'], z_radar=meas[:4], z_camera=meas[5:7])
+                # print("Track created -------- Camera + RADAR----------", new_track.track_id)
                 self.tracks[new_track.track_id] = new_track
                 # print('Tracklet created (C+R)', new_track.track_id)
 
@@ -236,6 +248,7 @@ class Tracker():
         unmatched_radar_dets = radar_dets[list(radar_unmatched_ids)]
         for meas in unmatched_radar_dets:
             new_track = Tracklet(inputs['timestamp'], z_radar=meas[:4])
+            # print("Track created -------- RADAR ----------", new_track.track_id)
             self.tracks[new_track.track_id] = new_track
             # print('Tracklet created (R)', new_track.track_id)
 
@@ -249,6 +262,7 @@ class Tracker():
         unmatched_camera_dets = camera_dets[list(camera_unmatched_ids)]
         for meas in unmatched_camera_dets:
             new_track = Tracklet(inputs['timestamp'], z_camera=meas[:2])
+            # print("Track created -------- Camera ----------", new_track.track_id)
             self.tracks[new_track.track_id] = new_track
             # print('Tracklet created (C)', new_track.track_id)
 
@@ -274,10 +288,12 @@ class Tracker():
         fused_tracks = {}
         for track_id in self.tracks:
             if self.tracks[track_id].hits >= self.hit_window:
+                if self.tracks[track_id].hits >= 10:
+                    print ("Track Id: --", track_id, " Hits: -----", self.tracks[track_id].hits)
                 fused_tracks[track_id] = {}
                 fused_tracks[track_id]['state'] = self.tracks[track_id].state.copy().flatten()
                 fused_tracks[track_id]['state_cov'] = self.tracks[track_id].state_cov.copy()
-
+                
         # Store data for the next timestep 
         self.prev_ego_state = inputs['ego_state']
         self.prev_timestamp = inputs['timestamp']
