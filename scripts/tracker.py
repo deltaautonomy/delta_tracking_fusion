@@ -87,7 +87,7 @@ class Tracklet():
 
 
 class Tracker():
-    def __init__(self, hit_window=3, miss_window=3):
+    def __init__(self, hit_window=10, miss_window=5):
         self.tracks = {}
         self.hit_window = hit_window
         self.miss_window = miss_window
@@ -182,7 +182,7 @@ class Tracker():
 
         if len(track_states_comp) and len(radar_dets):
             # Temporal data association using RADAR detections with compensated states
-            matched_radar_dets = self.data_association(radar_dets, track_states_comp, gating_threshold=20)
+            matched_radar_dets = self.data_association(radar_dets, track_states_comp, gating_threshold=10)
             # print('matched_radar_dets', len(matched_radar_dets))
 
             # Update tracklets with RADAR measurements
