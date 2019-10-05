@@ -3,7 +3,7 @@
 
     <!-- Play rosbag record -->
     <include file="$(find delta_perception)/launch/play_rosbag.launch">
-        <arg name="filename" value="$(find delta_perception)/bags/perception-pipeline-01.bag" />
+        <arg name="filename" value="$(find delta_perception)/bags/tracking_debug_4_car_static.bag" />
     </include>
 
     <node

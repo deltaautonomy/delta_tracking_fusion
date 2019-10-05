@@ -25,7 +25,7 @@ class KalmanFilterRADARCamera():
         @param: dt - timestep at which the vehicle state should update
         """
         # KalmanFilter.__init__(state_dim, sensor_dim, 0)
-        self.dt = dt
+        self.dt = 0.01
         self.state_dim = state_dim
         self.camera_dim = camera_dim
         self.radar_dim = radar_dim
@@ -187,13 +187,14 @@ class KalmanFilterRADARCamera():
         Carries out both predict and update step
         @param: current_time - the time since the last update
         """
-        time_step = self.last_call_time - current_time
+        # time_step = self.last_call_time - current_time
+        time_step = current_time - self.last_call_time
+        if (time_step> self.dt): self.last_call_time = current_time
         while(time_step > self.dt):
             time_step -= self.dt
             self.predict(self.dt)
         if (time_step%self.dt > 0):
             self.predict(time_step%self.dt)
-        self.last_call_time = current_time
         return self.x
     
     def update_step(self, z_camera=None, z_radar=None, R_camera=None, R_radar=None):

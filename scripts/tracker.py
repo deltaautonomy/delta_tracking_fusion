@@ -32,7 +32,7 @@ from filter import KalmanFilterRADARCamera
 
 class Tracklet():
     unique_id = 0
-    def __init__(self, timestamp, z_radar=None, z_camera=None):
+    def __init__(self, timestamp, z_radar=None, z_camera=None, verbose = True):
         # Assign new unique track ID
         Tracklet.unique_id += 1
         self.track_id = Tracklet.unique_id
@@ -41,6 +41,7 @@ class Tracklet():
         self.age = 0
         self.hits = 0
         self.misses = 0
+        self.verbose = verbose
 
         # RADAR measurement noise
         self.std_radar_x = 0.5
@@ -70,8 +71,11 @@ class Tracklet():
         self.update(timestamp, z_radar=z_radar, z_camera=z_camera)
 
     def predict(self, timestamp):
+        # print ("here------------------------------------")
         self.age += 1
         self.state = self.filter.predict_step(timestamp)
+        # self.state[1][0] = 2.9
+        if (self.verbose): print ("\n predicted state from kalman filter", self.state.flatten())
         self.state_cov = self.filter.P
 
     def update(self, timestamp, z_radar=None, z_camera=None):
@@ -84,16 +88,18 @@ class Tracklet():
                                              R_radar=self.R_radar, R_camera=self.R_camera)
         self.state_cov = self.filter.P
         self.last_update_time = timestamp
-
+        if (self.verbose): print ("\n updated state from kalman filter", self.state.flatten())
+            
 
 class Tracker():
-    def __init__(self, hit_window=10, miss_window=5):
+    def __init__(self, hit_window=5, miss_window=5, verbose = True):
         self.tracks = {}
         self.hit_window = hit_window
         self.miss_window = miss_window
         self.radar_noise = np.eye(4) * 10
         self.prev_ego_state = None
         self.prev_timestamp = None #TODO Change this to something valid
+        self.verbose = verbose
 
     def data_association(self, states_a, states_b, gating_threshold=5):
         ''' Method to solve least cost problem for associating data from two 
@@ -144,7 +150,6 @@ class Tracker():
         return track_states
 
     def update(self, inputs):
-        # print()
         #------------------- PREDICT / MOTION COMPENSATE -------------------#
 
         # Predict new states for all tracklets for the next timestep
@@ -153,10 +158,9 @@ class Tracker():
             pass
             # print ("Original state: ")
             # print (" ID : ", self.tracks[track_id].track_id, "State is: ", self.tracks[track_id].state)
-            # print ("Predicted state: ")
+            # print ("Predicted state for track ID: ", track_id)
             self.tracks[track_id].predict(inputs['timestamp'])
             # print (" ID : ", self.tracks[track_id].track_id, "State is: ", self.tracks[track_id].state)
-
 
         # Transform all tracklet states by ego motion
         if self.prev_timestamp is not None:
@@ -165,13 +169,15 @@ class Tracker():
         else: track_states_comp = []
 
         #----------------------- UPDATE OLD TRACKLETS -----------------------#
-
         # Assign temporary ID for each detection to keep track of its association status
         radar_dets = np.c_[inputs['radar'], np.arange(len(inputs['radar']))]
         camera_dets = np.c_[inputs['camera'], np.arange(len(inputs['camera']))]
-        # print ("radar dets", radar_dets)
-        # print ("camera dets", camera_dets)
         camera_dets = np.asarray([])
+        if self.verbose:
+            print ()
+            print ("\n raw radar dets: ", radar_dets)
+            print ("\nraw camera dets: ", camera_dets)
+            print ()
         
         # Keep the status of which measurements are being used and not
         radar_matched_ids, camera_matched_ids = set(), set()
@@ -179,23 +185,24 @@ class Tracker():
 
         # Keep the status of which tracklets are being updated and not
         track_updated = {track_id: False for track_id in self.tracks.keys()}
-
         if len(track_states_comp) and len(radar_dets):
             # Temporal data association using RADAR detections with compensated states
             matched_radar_dets = self.data_association(radar_dets, track_states_comp, gating_threshold=10)
             # print('matched_radar_dets', len(matched_radar_dets))
 
             # Update tracklets with RADAR measurements
+            # print ("matched radar", matched_radar_dets)
             for meas in matched_radar_dets:
                 track_id = meas[-1]
                 self.tracks[track_id].update(inputs['timestamp'], z_radar=meas[:4])
                 track_updated[track_id] = True
-
+                if (self.verbose): print ("\n After kalman filter: ", self.tracks[track_id].state.flatten(), "\n")
                 # Updated matched measurements ID set
                 radar_matched_ids.add(int(meas[4]))
 
             # Update unmatched measurements ID set
             radar_unmatched_ids -= radar_matched_ids
+        
 
         if len(track_states_comp) and len(camera_dets):
             # Temporal data association using camera detections with compensated states
@@ -288,18 +295,19 @@ class Tracker():
         fused_tracks = {}
         for track_id in self.tracks:
             if self.tracks[track_id].hits >= self.hit_window:
-                if self.tracks[track_id].hits >= 10:
-                    print ("Track Id: --", track_id, " Hits: -----", self.tracks[track_id].hits)
+                # if self.tracks[track_id].hits >= 10:
+                    # print ("Track Id: --", track_id, " Hits: -----", self.tracks[track_id].hits)
                 fused_tracks[track_id] = {}
                 fused_tracks[track_id]['state'] = self.tracks[track_id].state.copy().flatten()
+                if (self.verbose): print ("\n Final states: ", fused_tracks[track_id]['state'])
                 fused_tracks[track_id]['state_cov'] = self.tracks[track_id].state_cov.copy()
                 
         # Store data for the next timestep 
         self.prev_ego_state = inputs['ego_state']
         self.prev_timestamp = inputs['timestamp']
-
+        print ("++++++++++++++++++++++++++++++++++++++++Frame ended++++++++++++++++++++++++++++++++++++++++++")
+        # print (fused_tracks)
         return fused_tracks
-
 
 if __name__ == '__main__':    
     tracker = Tracker()

@@ -50,7 +50,7 @@ EGO_VEHICLE_FRAME = 'ego_vehicle'
 # Classes
 pp = pprint.PrettyPrinter(indent=4)
 tracker = Tracker()
-occupancy_grid = OccupancyGridGenerator(30, 100, EGO_VEHICLE_FRAME, 0.1)
+occupancy_grid = OccupancyGridGenerator(30, 100, EGO_VEHICLE_FRAME, .5)
 
 # FPS loggers
 FRAME_COUNT = 0
@@ -75,8 +75,11 @@ def get_tracker_inputs(camera_msg, radar_msg, state_msg):
     for track in radar_msg.tracks:
         pos_msg = position_to_numpy(track.track_shape.points[0])
         # todo(prateek): trasnform this radar data to ego vehicle frame
-        inputs['radar'].append(np.asarray([pos_msg[0] - 2.2, pos_msg[1],
-            track.linear_velocity.x, track.linear_velocity.y]))
+        # inputs['radar'].append(np.asarray([pos_msg[0] - 2.2, -pos_msg[1],
+        #     track.linear_velocity.x, track.linear_velocity.y]))
+        #TODO @Prateek - fix y velocity and y position
+        inputs['radar'].append(np.asarray([pos_msg[0] - 2.2, -pos_msg[1],
+            track.linear_velocity.x, 0]))
     inputs['radar'] = np.asarray(inputs['radar'])
 
     inputs['ego_state'] = np.asarray([
@@ -109,7 +112,8 @@ def tracking_fusion_pipeline(camera_msg, radar_msg, state_msg, publishers, vis=T
         state_cov = tracks[track_id]['state_cov']
         label_msg = make_label('ID: ' + str(track_id), np.r_[state[:2], 1],
             frame_id=EGO_VEHICLE_FRAME, marker_id=track_id)
-        grid = occupancy_grid.place_gaussian(state[:2][::-1], np.flip(state_cov[:2, :2]), 100, grid)
+        # grid = occupancy_grid.place_gaussian(state[:2][::-1], np.flip(state_cov[:2, :2]), 100, grid)
+        grid = occupancy_grid.place(np.r_[state[0], -state[1]], 100, grid)
 
         # Tracker message
         # tracker_msg = Track()
