@@ -1,6 +1,6 @@
 # Tracking and Fusion Pipeline
 
-This package has one ROS node for for tracking and fusion.
+This package has one ROS node for tracking and camera/RADAR fusion.
 
 ### Topics
 
@@ -10,9 +10,9 @@ Following are the input topics to this node.
 - `/delta/prediction/ego_vehicle/state` of type `delta_prediction.EgoStateEstimate`.
 
 Following are the output topics from this node.
-- `/delta/tracking_fusion/tracker/tracks` of type `delta_tracking_fusion.TrackArray`.
-- `/delta/tracking_fusion/tracker/occupancy_grid` of type `delta_tracking_fusion.OccupancyGrid`.
-- `/delta/tracking_fusion/tracker/track_id_marker` of type  `delta_tracking_fusion.Marker`
+- `/delta/tracking_fusion/tracker/tracks` of type `delta_tracking_fusion.TrackArray`. This message contains the state, covariance matrix, labels, and track IDs for all the fused detections.
+- `/delta/tracking_fusion/tracker/occupancy_grid` of type `nav_msgs.OccupancyGrid`. This message contains the fused data of camera/RADAR detections along with the mean and covariance of each object.
+- `/delta/tracking_fusion/tracker/track_id_marker` of type  `visualization_msgs.Marker`
 
 ### Usage
 
