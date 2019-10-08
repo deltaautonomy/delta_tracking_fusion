@@ -12,7 +12,7 @@ find_package(catkin REQUIRED COMPONENTS
   sensor_msgs
   visualization_msgs
   message_generation
-  delta_prediction
+  # delta_prediction
 )
 
 ################################################
