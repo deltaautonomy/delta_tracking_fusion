@@ -176,7 +176,7 @@ class Tracker():
         if self.verbose:
             print ()
             print ("\n raw radar dets: ", radar_dets)
-            print ("\nraw camera dets: ", camera_dets)
+            # print ("\nraw camera dets: ", camera_dets)
             print ()
         
         # Keep the status of which measurements are being used and not
