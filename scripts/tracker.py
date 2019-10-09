@@ -189,7 +189,7 @@ class Tracker():
         track_updated = {track_id: False for track_id in self.tracks.keys()}
         if len(track_states_comp) and len(radar_dets):
             # Temporal data association using RADAR detections with compensated states
-            matched_radar_dets = self.data_association(radar_dets, track_states_comp, gating_threshold=15)
+            matched_radar_dets = self.data_association(radar_dets, track_states_comp, gating_threshold=10)
             # print('matched_radar_dets', len(matched_radar_dets))
 
             # Update tracklets with RADAR measurements
