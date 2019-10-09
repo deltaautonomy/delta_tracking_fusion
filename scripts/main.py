@@ -59,10 +59,8 @@ all_fps = FPSLogger('All')
 
 ########################### Functions ###########################
 
-
 def validate(tracks):
     pass
-
 
 def get_tracker_inputs(camera_msg, radar_msg, state_msg):
     inputs = {'camera': [], 'radar': [], 'ego_state': []}
@@ -112,7 +110,7 @@ def tracking_fusion_pipeline(camera_msg, radar_msg, state_msg, publishers, vis=T
         label_msg = make_label('ID: ' + str(track_id), np.r_[state[:2], 1],
             frame_id=EGO_VEHICLE_FRAME, marker_id=track_id)
         # grid = occupancy_grid.place_gaussian(state[:2][::-1], np.flip(state_cov[:2, :2]), 100, grid)
-        grid = occupancy_grid.place(np.r_[state[0], -state[1]], 100, grid)
+        grid = occupancy_grid.place(np.r_[state[0], -state[1]], 500, grid)
 
         # Tracker message
         # tracker_msg = Track()

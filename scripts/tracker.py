@@ -32,7 +32,7 @@ from filter import KalmanFilterRADARCamera
 
 class Tracklet():
     unique_id = 0
-    def __init__(self, timestamp, z_radar=None, z_camera=None, verbose = True):
+    def __init__(self, timestamp, z_radar=None, z_camera=None, verbose = False):
         # Assign new unique track ID
         Tracklet.unique_id += 1
         self.track_id = Tracklet.unique_id
@@ -92,7 +92,7 @@ class Tracklet():
             
 
 class Tracker():
-    def __init__(self, hit_window=5, miss_window=5, verbose = True):
+    def __init__(self, hit_window=5, miss_window=5, verbose = False):
         self.tracks = {}
         self.hit_window = hit_window
         self.miss_window = miss_window
@@ -175,9 +175,11 @@ class Tracker():
         camera_dets = np.asarray([])
         if self.verbose:
             print ()
-            print ("\n raw radar dets: ", radar_dets)
+        print ("\n  raw radar dets: ", radar_dets)
+            # print ()
+            # print (len(radar_dets))
+            # print (radar_dets[0].shape)
             # print ("\nraw camera dets: ", camera_dets)
-            print ()
         
         # Keep the status of which measurements are being used and not
         radar_matched_ids, camera_matched_ids = set(), set()
@@ -187,7 +189,7 @@ class Tracker():
         track_updated = {track_id: False for track_id in self.tracks.keys()}
         if len(track_states_comp) and len(radar_dets):
             # Temporal data association using RADAR detections with compensated states
-            matched_radar_dets = self.data_association(radar_dets, track_states_comp, gating_threshold=10)
+            matched_radar_dets = self.data_association(radar_dets, track_states_comp, gating_threshold=15)
             # print('matched_radar_dets', len(matched_radar_dets))
 
             # Update tracklets with RADAR measurements
@@ -305,8 +307,7 @@ class Tracker():
         # Store data for the next timestep 
         self.prev_ego_state = inputs['ego_state']
         self.prev_timestamp = inputs['timestamp']
-        print ("++++++++++++++++++++++++++++++++++++++++Frame ended++++++++++++++++++++++++++++++++++++++++++")
-        # print (fused_tracks)
+        if (self.verbose): print ("++++++++++++++++++++++++++++++++++++++++Frame ended++++++++++++++++++++++++++++++++++++++++++")
         return fused_tracks
 
 if __name__ == '__main__':    
