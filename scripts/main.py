@@ -18,6 +18,7 @@ from init_paths import *
 import pprint
 
 # External modules
+# import motmetrics
 import matplotlib.pyplot as plt
 
 # ROS modules
@@ -50,7 +51,8 @@ EGO_VEHICLE_FRAME = 'ego_vehicle'
 # Classes
 pp = pprint.PrettyPrinter(indent=4)
 tracker = Tracker()
-occupancy_grid = OccupancyGridGenerator(30, 100, EGO_VEHICLE_FRAME, .5)
+# acc = motmetrics.MOTAccumulator(auto_id=True)
+occupancy_grid = OccupancyGridGenerator(30, 100, EGO_VEHICLE_FRAME, 1.5)
 
 # FPS loggers
 FRAME_COUNT = 0
@@ -59,8 +61,10 @@ all_fps = FPSLogger('All')
 
 ########################### Functions ###########################
 
-def validate(tracks):
+def validate(tracks, ground_truth):
+    print(len(ground_truth))
     pass
+
 
 def get_tracker_inputs(camera_msg, radar_msg, state_msg):
     inputs = {'camera': [], 'radar': [], 'ego_state': []}
@@ -102,13 +106,15 @@ def tracking_fusion_pipeline(camera_msg, radar_msg, state_msg, publishers, vis=T
     grid = occupancy_grid.empty_grid()
     tracker_array_msg = TrackArray()
     label_msg = None
+    print('New')
     for track_id in tracks:
         state = tracks[track_id]['state']
         state_cov = tracks[track_id]['state_cov']
-        label_msg = make_label('ID: ' + str(track_id), np.r_[[state[0], state[1]], 1],
+        label_msg = make_label('ID: ' + str(track_id), np.r_[state[:2], 1],
             frame_id=EGO_VEHICLE_FRAME, marker_id=track_id)
-        # grid = occupancy_grid.place_gaussian(state[:2][::-1], np.flip(state_cov[:2, :2]), 100, grid)
-        grid = occupancy_grid.place(np.r_[state[0], state[1]], 100, grid)
+        print(track_id, state)
+        # grid = occupancy_grid.place_gaussian(state[:2], state_cov[:2, :2], 100, grid)
+        grid = occupancy_grid.place(state[:2], 100, grid)
 
         # Tracker message
         # tracker_msg = Track()
@@ -134,8 +140,8 @@ def tracking_fusion_pipeline(camera_msg, radar_msg, state_msg, publishers, vis=T
 
     # Display FPS logger status
     all_fps.tick()
-    sys.stdout.write('\r%s ' % (tracker_fps.get_log()))
-    sys.stdout.flush()
+    # sys.stdout.write('\r%s ' % (tracker_fps.get_log()))
+    # sys.stdout.flush()
     return tracks
 
 
@@ -147,7 +153,7 @@ def callback(camera_msg, radar_msg, state_msg, publishers, **kwargs):
     tracks = tracking_fusion_pipeline(camera_msg, radar_msg, state_msg, publishers)
 
     # Run the validation pipeline
-    validate(tracks)
+    # validate(tracks, gt_msg)
 
 
 def shutdown_hook():
@@ -165,6 +171,7 @@ def run(**kwargs):
     # Handle params and topics
     camera_track = rospy.get_param('~camera_track', '/delta/perception/ipm/camera_track')
     radar_track = rospy.get_param('~radar_track', '/carla/ego_vehicle/radar/tracks')
+    ground_truth_track = rospy.get_param('~ground_truth_track', '/carla/ego_vehicle/ground_truth/tracks')
     ego_state = rospy.get_param('~ego_state', '/delta/prediction/ego_vehicle/state')
     fused_track = rospy.get_param('~fused_track', '/delta/tracking_fusion/tracker/tracks')
     occupancy_topic = rospy.get_param('~occupancy_topic', '/delta/tracking_fusion/tracker/occupancy_grid')
@@ -173,6 +180,7 @@ def run(**kwargs):
     # Display params and topics
     rospy.loginfo('CameraTrackArray topic: %s' % camera_track)
     rospy.loginfo('RadarTrackArray topic: %s' % radar_track)
+    rospy.loginfo('Ground Trurh TrackArray topic: %s' % ground_truth_track)
     rospy.loginfo('EgoStateEstimate topic: %s' % ego_state)
     rospy.loginfo('TrackArray topic: %s' % fused_track)
     rospy.loginfo('OccupancyGrid topic: %s' % occupancy_topic)
@@ -187,6 +195,7 @@ def run(**kwargs):
     # Subscribe to topics
     camera_sub = message_filters.Subscriber(camera_track, CameraTrackArray)
     radar_sub = message_filters.Subscriber(radar_track, RadarTrackArray)
+    # ground_truth_sub = message_filters.Subscriber(ground_truth_track, TrackArray)
     state_sub = message_filters.Subscriber(ego_state, EgoStateEstimate)
 
     # Synchronize the topics by time
