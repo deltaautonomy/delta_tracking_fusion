@@ -24,7 +24,6 @@ class KalmanFilterRADARCamera():
         @param: control_dim - number of control variables
         @param: dt - timestep at which the vehicle state should update
         """
-        # KalmanFilter.__init__(state_dim, sensor_dim, 0)
         self.dt = 0.01
         self.state_dim = state_dim
         self.camera_dim = camera_dim
@@ -46,7 +45,6 @@ class KalmanFilterRADARCamera():
         self.camera = SensorMeasurementModel(state_dim, camera_dim)
         # Radar Measurement Model [x, y, vx, vy]
         self.radar = SensorMeasurementModel(state_dim, radar_dim)
-        # self.radar = RadarMeasurementModel(state_dim, radar_dim)
         self.initialize_filter(sigma_acc=8.8)
 
         self.id = vehicle_id
@@ -189,12 +187,12 @@ class KalmanFilterRADARCamera():
         """
         # time_step = self.last_call_time - current_time
         time_step = current_time - self.last_call_time
-        if (time_step> self.dt): self.last_call_time = current_time
-        while(time_step > self.dt):
+        if time_step > self.dt: self.last_call_time = current_time
+        while time_step > self.dt:
             time_step -= self.dt
             self.predict(self.dt)
-        if (time_step%self.dt > 0):
-            self.predict(time_step%self.dt)
+        if time_step % self.dt > 0:
+            self.predict(time_step % self.dt)
         return self.x
     
     def update_step(self, z_camera=None, z_radar=None, R_camera=None, R_radar=None):
@@ -237,7 +235,6 @@ class SensorMeasurementModel():
         assert (R.shape == self.R.shape), "Shape of the R matrix is incorrect"
         self.R = R
     
-
     def set_z(self, z, t, R=None):
         assert (z.shape == self.z.shape), "Shape of the Z matrix is incorrect"
         self.z = z
@@ -245,22 +242,6 @@ class SensorMeasurementModel():
 
         if R is not None:
             self.set_R(R)
-
-    def get_H(self, state):
-        px = state[0][0]
-        py = state[2][0]
-        vx = state[1][0]
-        vy = state[3][0]
-        c1 = (px**2 + py**2)
-        c2 = vx*py - px*vy
-
-        if math.sqrt(c1) < 0.000001:
-            c1 = 0.000001
-
-        H = np.array([[      px/math.sqrt(c1),                0,        py/math.sqrt(c1),                0],  ##this matrix is definitely wrong
-                      [                -py/c1,                0,                   px/c1,                0],
-                      [py*c2/math.sqrt(c1)**3, px/math.sqrt(c1), -px*c2/math.sqrt(c1)**3, py/math.sqrt(c1)]])
-        return H
 
 
 if __name__ == "__main__":
