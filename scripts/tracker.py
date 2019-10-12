@@ -32,22 +32,23 @@ from filter import KalmanFilterRADARCamera
 
 class Tracklet():
     unique_id = 0
-    def __init__(self, timestamp, z_radar=None, z_camera=None, verbose = False):
+    def __init__(self, timestamp, z_radar=None, z_camera=None, verbose=False):
+        print(z_camera, z_radar)
         # Assign new unique track ID
         Tracklet.unique_id += 1
         self.track_id = Tracklet.unique_id
+        self.verbose = verbose
 
         # Tracklet streaks
         self.age = 0
         self.hits = 0
         self.misses = 0
-        self.verbose = verbose
 
         # RADAR measurement noise
-        self.std_radar_x = 0.5
-        self.std_radar_y = 0.5
-        self.std_radar_vx = 0.5
-        self.std_radar_vy = 0.5
+        self.std_radar_x = 0.5  #3
+        self.std_radar_y = 0.5  #1
+        self.std_radar_vx = 0.5  #1.5
+        self.std_radar_vy = 0.5  #1
         self.R_radar = np.diag([self.std_radar_x ** 2, self.std_radar_y ** 2,
                                 self.std_radar_vx ** 2, self.std_radar_vy ** 2])
 
@@ -74,7 +75,7 @@ class Tracklet():
         self.age += 1
         self.state = self.filter.predict_step(timestamp)
         self.state_cov = self.filter.P
-        if self.verbose: print ("\nPredicted state from kalman filter", self.state.flatten())
+        if self.verbose: print ("Predicted state from kalman filter", self.state.flatten())
 
     def update(self, timestamp, z_radar=None, z_camera=None):
         assert not(z_radar is None and z_camera is None), \
@@ -86,11 +87,11 @@ class Tracklet():
                                              R_radar=self.R_radar, R_camera=self.R_camera)
         self.state_cov = self.filter.P
         self.last_update_time = timestamp
-        if self.verbose: print ("\nUpdated state from kalman filter", self.state.flatten())
+        if self.verbose: print("Updated state from kalman filter", self.state.flatten())
             
 
 class Tracker():
-    def __init__(self, hit_window=5, miss_window=5, verbose = False):
+    def __init__(self, hit_window=1, miss_window=5, verbose=True):
         self.tracks = {}
         self.hit_window = hit_window
         self.miss_window = miss_window
@@ -98,7 +99,7 @@ class Tracker():
         self.prev_timestamp = None
         self.verbose = verbose
 
-    def data_association(self, states_a, states_b, gating_threshold=5):
+    def data_association(self, states_a, states_b, gating_threshold=10):
         ''' Method to solve least cost problem for associating data from two 
         input lists of numpy arrays'''
         # Extract pose from states
@@ -122,7 +123,7 @@ class Tracker():
             track_ids.append(track_id)
         return np.c_[states, track_ids]
 
-    def motion_compensate(self, ego_state, timestamp, track_states, inverse=False):
+    def motion_compensate(self, ego_state, timestamp, track_states, inverse=True):
         return track_states
         # ego_state: [x, y, vx, vy, yaw_rate]
         dt = (timestamp - self.prev_timestamp)
@@ -135,6 +136,7 @@ class Tracker():
                         [ 0,                0,              1    ]])
 
         if inverse: H = np.linalg.inv(H)
+        print("H matrix is: {}".format(H))
 
         # Transform the state poses
         # track_state: [x, y, vx, vy, id]
@@ -145,8 +147,18 @@ class Tracker():
 
         return track_states
 
+    def velocity_compensation(self, ego_state, radar_msgs):
+        vx = ego_state[2]
+        vy = ego_state[3]
+
+        for i in range(len(radar_msgs)):
+            radar_msgs[i, 2] -= vx
+            radar_msgs[i, 3] -= vy
+        return radar_msgs
+
     def update(self, inputs):
-        if self.verbose: print ("---------------- NEW FRAME ----------------")
+        if self.verbose: print("\n\n---------------- NEW FRAME ----------------\n")
+
         #------------------- PREDICT / MOTION COMPENSATE -------------------#
 
         # Predict new states for all tracklets for the next timestep
@@ -160,29 +172,33 @@ class Tracker():
                 inputs['timestamp'], self.get_track_states_with_id())
 
         #----------------------- UPDATE OLD TRACKLETS -----------------------#
+
         # Assign temporary ID for each detection to keep track of its association status
         radar_dets = np.c_[inputs['radar'], np.arange(len(inputs['radar']))]
         camera_dets = np.c_[inputs['camera'], np.arange(len(inputs['camera']))]
         camera_dets = np.asarray([])
-        if self.verbose: print ("\nRaw radar dets: ", radar_dets)
+        if self.verbose: print("Raw radar detections:\n", radar_dets)
+
+        #compensating velocity of the input radar measurements with the ego vehicle velocity
+        radar_dets = self.velocity_compensation(inputs['ego_state'], radar_dets)
 
         # Keep the status of which measurements are being used and not
         radar_matched_ids, camera_matched_ids = set(), set()
-        radar_unmatched_ids, camera_unmatched_ids = set(range(len(radar_dets))), set(range(len(camera_dets)))
+        radar_unmatched_ids = set(range(len(radar_dets)))
+        camera_unmatched_ids = set(range(len(camera_dets)))
 
         # Keep the status of which tracklets are being updated and not
         track_updated = {track_id: False for track_id in self.tracks.keys()}
         if len(track_states_comp) and len(radar_dets):
             # Temporal data association using RADAR detections with compensated states
-            matched_radar_dets = self.data_association(radar_dets, track_states_comp, gating_threshold=10)
+            matched_radar_dets = self.data_association(radar_dets, track_states_comp)
 
             # Update tracklets with RADAR measurements
             for meas in matched_radar_dets:
                 track_id = meas[-1]
                 self.tracks[track_id].update(inputs['timestamp'], z_radar=meas[:4])
                 track_updated[track_id] = True
-                if self.verbose: print ("\nAfter kalman filter: ", self.tracks[track_id].state.flatten(), "\n")
-                
+
                 # Update matched measurements ID set
                 radar_matched_ids.add(int(meas[4]))
 
@@ -209,6 +225,8 @@ class Tracker():
         for track_id in track_updated:
             if not track_updated[track_id]:
                 self.tracks[track_id].misses += 1
+            else:
+                self.tracks[track_id].misses = 0
 
         #----------------------- CREATE NEW TRACKLETS -----------------------#
 
@@ -218,7 +236,7 @@ class Tracker():
         unmatched_camera_dets = camera_dets[list(camera_unmatched_ids)]
         if len(unmatched_radar_dets) and len(unmatched_camera_dets):
             matched_camera_radar_dets = self.data_association(unmatched_radar_dets,
-                unmatched_camera_dets, gating_threshold=5)
+                unmatched_camera_dets)
 
             # Create new tracklets if we got matches
             for meas in matched_camera_radar_dets:
@@ -267,6 +285,7 @@ class Tracker():
         tracks = {k: v for k,v in self.tracks.iteritems()} 
         for track_id in tracks:
             if tracks[track_id].misses >= self.miss_window:
+                print("Deleting track: {} {}".format(track_id, self.tracks[track_id].state.flatten()))
                 del self.tracks[track_id]
 
         # Return confident tracklets
@@ -276,7 +295,9 @@ class Tracker():
                 fused_tracks[track_id] = {}
                 fused_tracks[track_id]['state'] = self.tracks[track_id].state.copy().flatten()
                 fused_tracks[track_id]['state_cov'] = self.tracks[track_id].state_cov.copy()
-                if self.verbose: print ("\nFinal states: ", fused_tracks[track_id]['state'])
+                print("Final states: ", track_id, fused_tracks[track_id]['state'])
+            else:
+                print("Final states (not confident): ", track_id, self.tracks[track_id].state.flatten())
 
         # Store data for the next timestep 
         self.prev_ego_state = inputs['ego_state']
