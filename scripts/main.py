@@ -106,26 +106,24 @@ def tracking_fusion_pipeline(camera_msg, radar_msg, state_msg, publishers, vis=T
     grid = occupancy_grid.empty_grid()
     tracker_array_msg = TrackArray()
     label_msg = None
-    print('New')
     for track_id in tracks:
         state = tracks[track_id]['state']
         state_cov = tracks[track_id]['state_cov']
         label_msg = make_label('ID: ' + str(track_id), np.r_[state[:2], 1],
             frame_id=EGO_VEHICLE_FRAME, marker_id=track_id)
-        print(track_id, state)
         # grid = occupancy_grid.place_gaussian(state[:2], state_cov[:2, :2], 100, grid)
         grid = occupancy_grid.place(state[:2], 100, grid)
 
         # Tracker message
-        # tracker_msg = Track()
-        # tracker_msg.x = state[0]
-        # tracker_msg.y = state[1]
-        # tracker_msg.vx = state[2]
-        # tracker_msg.vy = state[3]
-        # tracker_msg.track_id = int(track_id)
-        # tracker_msg.state_cov = state_cov.flatten().tolist()
-        # tracker_msg.label = 'vehicle'
-        # tracker_array_msg.tracks.append(tracker_msg)
+        tracker_msg = Track()
+        tracker_msg.x = state[0]
+        tracker_msg.y = state[1]
+        tracker_msg.vx = state[2]
+        tracker_msg.vy = state[3]
+        tracker_msg.track_id = int(track_id)
+        tracker_msg.covariance = state_cov.flatten().tolist()
+        tracker_msg.label = 'vehicle'
+        tracker_array_msg.tracks.append(tracker_msg)
 
     # For debugging without Rviz
     # plt.imshow(grid)
@@ -135,8 +133,8 @@ def tracking_fusion_pipeline(camera_msg, radar_msg, state_msg, publishers, vis=T
     grid_msg = occupancy_grid.refresh(grid, radar_msg.header.stamp)
     publishers['occupancy_pub'].publish(grid_msg)
     if label_msg is not None: publishers['marker_pub'].publish(label_msg)
-    # tracker_array_msg.header.stamp = radar_msg.header.stamp
-    # publishers['track_pub'].publish(tracker_array_msg)
+    tracker_array_msg.header.stamp = radar_msg.header.stamp
+    publishers['track_pub'].publish(tracker_array_msg)
 
     # Display FPS logger status
     all_fps.tick()

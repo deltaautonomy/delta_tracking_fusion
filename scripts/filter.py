@@ -167,6 +167,7 @@ class KalmanFilterRADARCamera():
             Y = z - np.matmul(H, self.x)
         
         covariance_sum = np.matmul(np.matmul(H, self.P), H.T) + R
+        mh_distance = self.mahalanobis(Y, covariance_sum)
         K = np.matmul(np.matmul(self.P, H.T), np.linalg.pinv(covariance_sum))
 
         self.x = self.x + np.matmul(K, Y)
@@ -178,6 +179,7 @@ class KalmanFilterRADARCamera():
             print("_____State_____ \n", self.x)
             print("_____covariance_____\n", self.P)
             print("_____Error_____\n", Y)
+            print("_____Mahalanobis Distance_____\n", mh_distance)
             print("_____Kalman_Gain_____\n", K)
             
     def predict_step(self, current_time):
@@ -204,6 +206,18 @@ class KalmanFilterRADARCamera():
 
     def get_state(self):
         return self.x
+
+    def mahalanobis(self, Y, SI):
+        """
+        Taken from Filterpy github repository
+        Mahalanobis distance of innovation. E.g. 3 means measurement
+        was 3 standard deviations away from the predicted value.
+        Returns
+        -------
+        mahalanobis : float
+        """
+        mahalanobis = math.sqrt(float(np.dot(np.dot(Y.T, SI), Y)))
+        return mahalanobis
 
 
 class SensorMeasurementModel():
