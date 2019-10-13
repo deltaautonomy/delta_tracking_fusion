@@ -20,6 +20,7 @@ import pprint
 # External modules
 # import motmetrics
 import matplotlib.pyplot as plt
+from scipy.signal import savgol_filter
 
 # ROS modules
 import rospy
@@ -28,6 +29,7 @@ import message_filters
 # ROS messages
 from nav_msgs.msg import OccupancyGrid
 from visualization_msgs.msg import Marker
+from jsk_rviz_plugins.msg import PictogramArray
 from radar_msgs.msg import RadarTrack, RadarTrackArray
 from delta_perception.msg import CameraTrack, CameraTrackArray
 from delta_prediction.msg import EgoStateEstimate
@@ -36,13 +38,14 @@ from delta_tracking_fusion.msg import Track, TrackArray
 # Local python modules
 from utils import *
 from tracker import Tracker
-from scripts.cube_marker_publisher import make_label
 from scripts.occupancy_grid import OccupancyGridGenerator
+from scripts.cube_marker_publisher import make_label, make_pictogram, make_trajectory
 
 # Global objects
 STOP_FLAG = False
 cmap = plt.get_cmap('tab10')
 tf_listener = None
+trajectories = {}
 
 # Frames
 RADAR_FRAME = '/ego_vehicle/radar'
@@ -52,7 +55,7 @@ EGO_VEHICLE_FRAME = 'ego_vehicle'
 pp = pprint.PrettyPrinter(indent=4)
 tracker = Tracker()
 # acc = motmetrics.MOTAccumulator(auto_id=True)
-occupancy_grid = OccupancyGridGenerator(30, 100, EGO_VEHICLE_FRAME, 1.5)
+occupancy_grid = OccupancyGridGenerator(30, 100, EGO_VEHICLE_FRAME, 1)
 
 # FPS loggers
 FRAME_COUNT = 0
@@ -64,6 +67,85 @@ all_fps = FPSLogger('All')
 def validate(tracks, ground_truth):
     print(len(ground_truth))
     pass
+
+
+def make_track_msg(track_id, state, state_cov):
+    tracker_msg = Track()
+    tracker_msg.x = state[0]
+    tracker_msg.y = state[1]
+    tracker_msg.vx = state[2]
+    tracker_msg.vy = state[3]
+    tracker_msg.track_id = int(track_id)
+    tracker_msg.covariance = state_cov.flatten().tolist()
+    tracker_msg.label = 'vehicle'
+
+
+def publish_trajcetory(publishers, track_id, state, tracks, smoothing=True):
+    global trajectories
+
+    # Create/update trajectory
+    if track_id not in trajectories: trajectories[track_id] = np.asarray([state[:2]])
+    else: trajectories[track_id] = np.append(trajectories[track_id], [state[:2]], axis=0)
+    
+    # Trajectory smoothing over time
+    if smoothing:
+        length = len(trajectories[track_id])
+        if length > 5:
+            poly_degree = 4
+            window = int(min(np.ceil(length - 2) // 2 * 2 + 1, 51))
+            trajectories[track_id][:, 0] = savgol_filter(trajectories[track_id][:, 0], window, poly_degree)
+            trajectories[track_id][:, 1] = savgol_filter(trajectories[track_id][:, 1], window, poly_degree)
+    
+    # Publish the trajectory
+    publishers['traj_pub'].publish(make_trajectory(trajectories[track_id],
+        frame_id=EGO_VEHICLE_FRAME, marker_id=track_id, color=cmap(track_id % 10)))
+
+
+def publish_messages(publishers, tracks, timestamp):
+    global trajectories
+
+    # Generate ROS messages
+    grid = occupancy_grid.empty_grid()
+    tracker_array_msg = TrackArray()
+    label_array_msg = PictogramArray()
+
+    for track_id in tracks:
+        # Occupancy grid
+        state = tracks[track_id]['state']
+        state_cov = tracks[track_id]['state_cov']
+        grid = occupancy_grid.place(state[:2], 100, grid)
+        # grid = occupancy_grid.place_gaussian(state[:2], state_cov[:2, :2], 100, grid)
+
+        # Text marker
+        publishers['marker_pub'].publish(make_label('ID ' + str(track_id),
+            np.r_[state[:2], 1], frame_id=EGO_VEHICLE_FRAME, marker_id=track_id))
+
+        # Label icon
+        label_array_msg.pictograms.append(make_pictogram('fa-car',
+            np.r_[state[:2], 3], frame_id=EGO_VEHICLE_FRAME))
+
+        # Tracker message
+        tracker_array_msg.tracks.append(make_track_msg(track_id, state, state_cov))
+
+        # Update and publish trajectory
+        publish_trajcetory(publishers, track_id, state, tracks)
+
+    # Publish messages
+    grid_msg = occupancy_grid.refresh(grid, timestamp)
+    publishers['occupancy_pub'].publish(grid_msg)
+
+    label_array_msg.header.stamp = rospy.Time.now()
+    label_array_msg.header.frame_id = EGO_VEHICLE_FRAME
+    publishers['label_pub'].publish(label_array_msg)
+
+    tracker_array_msg.header.stamp = timestamp
+    tracker_array_msg.header.frame_id = EGO_VEHICLE_FRAME
+    publishers['track_pub'].publish(tracker_array_msg)
+
+    # Purge old trajectories
+    trajectories_ = {k: v for k,v in trajectories.iteritems()} 
+    for track_id in trajectories_:
+        if track_id not in tracks: del trajectories[track_id]
 
 
 def get_tracker_inputs(camera_msg, radar_msg, state_msg):
@@ -92,7 +174,8 @@ def get_tracker_inputs(camera_msg, radar_msg, state_msg):
     return inputs
 
 
-def tracking_fusion_pipeline(camera_msg, radar_msg, state_msg, publishers, vis=True, **kwargs):
+def tracking_fusion_pipeline(camera_msg, radar_msg, state_msg,
+    publishers, vis=True, **kwargs):
     # Log pipeline FPS
     all_fps.lap()
 
@@ -102,44 +185,14 @@ def tracking_fusion_pipeline(camera_msg, radar_msg, state_msg, publishers, vis=T
     tracks = tracker.update(inputs)
     tracker_fps.tick()
 
-    # Generate ROS messages
-    grid = occupancy_grid.empty_grid()
-    tracker_array_msg = TrackArray()
-    label_msg = None
-    for track_id in tracks:
-        state = tracks[track_id]['state']
-        state_cov = tracks[track_id]['state_cov']
-        label_msg = make_label('ID: ' + str(track_id), np.r_[state[:2], 1],
-            frame_id=EGO_VEHICLE_FRAME, marker_id=track_id)
-        # grid = occupancy_grid.place_gaussian(state[:2], state_cov[:2, :2], 100, grid)
-        grid = occupancy_grid.place(state[:2], 100, grid)
-
-        # Tracker message
-        tracker_msg = Track()
-        tracker_msg.x = state[0]
-        tracker_msg.y = state[1]
-        tracker_msg.vx = state[2]
-        tracker_msg.vy = state[3]
-        tracker_msg.track_id = int(track_id)
-        tracker_msg.covariance = state_cov.flatten().tolist()
-        tracker_msg.label = 'vehicle'
-        tracker_array_msg.tracks.append(tracker_msg)
-
-    # For debugging without Rviz
-    # plt.imshow(grid)
-    # plt.show()
-
-    # Publish messages
-    grid_msg = occupancy_grid.refresh(grid, radar_msg.header.stamp)
-    publishers['occupancy_pub'].publish(grid_msg)
-    if label_msg is not None: publishers['marker_pub'].publish(label_msg)
-    tracker_array_msg.header.stamp = radar_msg.header.stamp
-    publishers['track_pub'].publish(tracker_array_msg)
+    # Publish all messages
+    publish_messages(publishers, tracks, timestamp=radar_msg.header.stamp)
 
     # Display FPS logger status
     all_fps.tick()
-    # sys.stdout.write('\r%s ' % (tracker_fps.get_log()))
-    # sys.stdout.flush()
+    sys.stdout.write('\r%s ' % (tracker_fps.get_log()))
+    sys.stdout.flush()
+
     return tracks
 
 
@@ -174,6 +227,8 @@ def run(**kwargs):
     fused_track = rospy.get_param('~fused_track', '/delta/tracking_fusion/tracker/tracks')
     occupancy_topic = rospy.get_param('~occupancy_topic', '/delta/tracking_fusion/tracker/occupancy_grid')
     track_marker = rospy.get_param('~track_marker', '/delta/tracking_fusion/tracker/track_id_marker')
+    label_marker = rospy.get_param('~label_marker', '/delta/tracking_fusion/tracker/label_marker')
+    trajectory_marker = rospy.get_param('~trajectory_marker', '/delta/tracking_fusion/tracker/trajectory_marker')
 
     # Display params and topics
     rospy.loginfo('CameraTrackArray topic: %s' % camera_track)
@@ -183,12 +238,16 @@ def run(**kwargs):
     rospy.loginfo('TrackArray topic: %s' % fused_track)
     rospy.loginfo('OccupancyGrid topic: %s' % occupancy_topic)
     rospy.loginfo('Track ID Marker topic: %s' % track_marker)
+    rospy.loginfo('Label Marker topic: %s' % label_marker)
+    rospy.loginfo('Trajectory Marker topic: %s' % trajectory_marker)
 
     # Publish output topic
     publishers = {}
     publishers['track_pub'] = rospy.Publisher(fused_track, TrackArray, queue_size=5)
     publishers['occupancy_pub'] = rospy.Publisher(occupancy_topic, OccupancyGrid, queue_size=5)
     publishers['marker_pub'] = rospy.Publisher(track_marker, Marker, queue_size=5)
+    publishers['label_pub'] = rospy.Publisher(label_marker, PictogramArray, queue_size=5)
+    publishers['traj_pub'] = rospy.Publisher(trajectory_marker, Marker, queue_size=5)
 
     # Subscribe to topics
     camera_sub = message_filters.Subscriber(camera_track, CameraTrackArray)
