@@ -18,7 +18,7 @@ from init_paths import *
 import pprint
 
 # External modules
-# import motmetrics
+import motmetrics as mot
 import matplotlib.pyplot as plt
 from scipy.signal import savgol_filter
 
@@ -54,7 +54,7 @@ EGO_VEHICLE_FRAME = 'ego_vehicle'
 # Classes
 pp = pprint.PrettyPrinter(indent=4)
 tracker = Tracker()
-# acc = motmetrics.MOTAccumulator(auto_id=True)
+acc = mot.MOTAccumulator(auto_id=True)
 occupancy_grid = OccupancyGridGenerator(30, 100, EGO_VEHICLE_FRAME, 1)
 
 # FPS loggers
@@ -64,10 +64,15 @@ all_fps = FPSLogger('All')
 
 ########################### Functions ###########################
 
-def validate(tracks, ground_truth):
-    print(len(ground_truth))
-    pass
+def validate(tracks, ground_truth, max_distance=40.0):
+    # Compute cost matrix.
+    objects = np.asarray([tracks[track_id]['state'][:2] for track_id in tracks])
+    hypothesis = np.asarray([[track.x, track.y] for track in ground_truth.tracks])
+    cost_matrix = mot.distances.norm2squared_matrix(objects, hypothesis, max_d2=max_distance)
 
+    # Accumulate data for validation.
+    gt_labels = [track.track_id for track in ground_truth.tracks]
+    acc.update(gt_labels, tracks.keys(), cost_matrix)
 
 def make_track_msg(track_id, state, state_cov):
     tracker_msg = Track()
@@ -151,7 +156,7 @@ def publish_messages(publishers, tracks, timestamp):
 def get_tracker_inputs(camera_msg, radar_msg, state_msg):
     inputs = {'camera': [], 'radar': [], 'ego_state': []}
     inputs['timestamp'] = state_msg.header.stamp.to_sec()
-    
+
     for track in camera_msg.tracks:
         inputs['camera'].append(np.asarray([track.x, track.y]))
     inputs['camera'] = np.asarray(inputs['camera'])
@@ -190,13 +195,13 @@ def tracking_fusion_pipeline(camera_msg, radar_msg, state_msg,
 
     # Display FPS logger status
     all_fps.tick()
-    sys.stdout.write('\r%s ' % (tracker_fps.get_log()))
-    sys.stdout.flush()
+    # sys.stdout.write('\r%s ' % (tracker_fps.get_log()))
+    # sys.stdout.flush()
 
     return tracks
 
 
-def callback(camera_msg, radar_msg, state_msg, publishers, **kwargs):
+def callback(camera_msg, radar_msg, state_msg, gt_msg, publishers, **kwargs):
     # Node stop has been requested
     if STOP_FLAG: return
 
@@ -204,7 +209,7 @@ def callback(camera_msg, radar_msg, state_msg, publishers, **kwargs):
     tracks = tracking_fusion_pipeline(camera_msg, radar_msg, state_msg, publishers)
 
     # Run the validation pipeline
-    # validate(tracks, gt_msg)
+    validate(tracks, gt_msg)
 
 
 def shutdown_hook():
@@ -212,6 +217,16 @@ def shutdown_hook():
     STOP_FLAG = True
     time.sleep(3)
     print('\n\033[95m' + '*' * 30 + ' Delta Tracking and Fusion Shutdown ' + '*' * 30 + '\033[00m\n')
+
+    print('\n\033[95m' + '*' * 30 + ' MOT Events Summary ' + '*' * 30 + '\033[00m\n')
+    print(acc.mot_events)
+
+    # Compute and display tracking metrics
+    print('\n\033[95m' + '*' * 30 + ' MOT Metrics Summary ' + '*' * 30 + '\033[00m\n')
+    metrics = mot.metrics.create()
+    summary = metrics.compute(acc, metrics=mot.metrics.motchallenge_metrics, name='Overall')
+    print(mot.io.render_summary(summary, formatters=metrics.formatters,
+        namemap=mot.io.motchallenge_metric_names), '\n')
 
 
 def run(**kwargs):
@@ -222,7 +237,7 @@ def run(**kwargs):
     # Handle params and topics
     camera_track = rospy.get_param('~camera_track', '/delta/perception/ipm/camera_track')
     radar_track = rospy.get_param('~radar_track', '/carla/ego_vehicle/radar/tracks')
-    ground_truth_track = rospy.get_param('~ground_truth_track', '/carla/ego_vehicle/ground_truth/tracks')
+    ground_truth_track = rospy.get_param('~ground_truth_track', '/carla/ego_vehicle/tracks/ground_truth')
     ego_state = rospy.get_param('~ego_state', '/delta/prediction/ego_vehicle/state')
     fused_track = rospy.get_param('~fused_track', '/delta/tracking_fusion/tracker/tracks')
     occupancy_topic = rospy.get_param('~occupancy_topic', '/delta/tracking_fusion/tracker/occupancy_grid')
@@ -252,12 +267,12 @@ def run(**kwargs):
     # Subscribe to topics
     camera_sub = message_filters.Subscriber(camera_track, CameraTrackArray)
     radar_sub = message_filters.Subscriber(radar_track, RadarTrackArray)
-    # ground_truth_sub = message_filters.Subscriber(ground_truth_track, TrackArray)
+    ground_truth_sub = message_filters.Subscriber(ground_truth_track, TrackArray)
     state_sub = message_filters.Subscriber(ego_state, EgoStateEstimate)
 
     # Synchronize the topics by time
     ats = message_filters.ApproximateTimeSynchronizer(
-        [camera_sub, radar_sub, state_sub], queue_size=1, slop=0.5)
+        [camera_sub, radar_sub, state_sub, ground_truth_sub], queue_size=1, slop=0.5)
     ats.registerCallback(callback, publishers, **kwargs)
 
     # Shutdown hook
