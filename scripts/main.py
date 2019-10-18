@@ -43,7 +43,7 @@ from scripts.cube_marker_publisher import make_label, make_pictogram, make_traje
 
 # Global objects
 STOP_FLAG = False
-cmap = plt.get_cmap('tab10')
+cmap = plt.get_cmap('rainbow')
 tf_listener = None
 trajectories = {}
 
@@ -53,9 +53,9 @@ EGO_VEHICLE_FRAME = 'ego_vehicle'
 
 # Classes
 pp = pprint.PrettyPrinter(indent=4)
-tracker = Tracker()
+tracker = Tracker(verbose=True)
 # acc = motmetrics.MOTAccumulator(auto_id=True)
-occupancy_grid = OccupancyGridGenerator(30, 100, EGO_VEHICLE_FRAME, 1)
+occupancy_grid = OccupancyGridGenerator(30, 100, EGO_VEHICLE_FRAME, 0.5)
 
 # FPS loggers
 FRAME_COUNT = 0
@@ -80,12 +80,12 @@ def make_track_msg(track_id, state, state_cov):
     tracker_msg.label = 'vehicle'
 
 
-def publish_trajcetory(publishers, track_id, state, tracks, smoothing=True):
+def publish_trajectory(publishers, track_id, state, tracks, smoothing=True):
     global trajectories
 
     # Create/update trajectory
-    if track_id not in trajectories: trajectories[track_id] = np.asarray([state[:2]])
-    else: trajectories[track_id] = np.append(trajectories[track_id], [state[:2]], axis=0)
+    if track_id not in trajectories: trajectories[track_id] = np.asarray([state[:2].copy()])
+    else: trajectories[track_id] = np.append(trajectories[track_id], [state[:2].copy()], axis=0)
     
     # Trajectory smoothing over time
     if smoothing:
@@ -128,7 +128,7 @@ def publish_messages(publishers, tracks, timestamp):
         tracker_array_msg.tracks.append(make_track_msg(track_id, state, state_cov))
 
         # Update and publish trajectory
-        publish_trajcetory(publishers, track_id, state, tracks)
+        publish_trajectory(publishers, track_id, state, tracks)
 
     # Publish messages
     grid_msg = occupancy_grid.refresh(grid, timestamp)

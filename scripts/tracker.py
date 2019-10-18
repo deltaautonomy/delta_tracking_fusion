@@ -65,8 +65,9 @@ class Tracklet():
                                               camera_dim=2,
                                               radar_dim=4,
                                               control_dim=0,
-                                              dt=0.1,
-                                              first_call_time=timestamp)
+                                              dt=0.01,
+                                              first_call_time=timestamp,
+                                              verbose=False)
 
         if self.verbose: print('New track:', z_camera, z_radar)
         self.update(timestamp, z_radar=z_radar, z_camera=z_camera)
@@ -75,7 +76,7 @@ class Tracklet():
         self.age += 1
         self.state = self.filter.predict_step(timestamp)
         self.state_cov = self.filter.P
-        if self.verbose: print ('Predicted state from kalman filter', self.state.flatten())
+        if self.verbose: print ('Predicted state from kalman filter at ', timestamp, ' is ', self.state.flatten())
 
     def update(self, timestamp, z_radar=None, z_camera=None):
         assert not(z_radar is None and z_camera is None), \
@@ -177,10 +178,10 @@ class Tracker():
         radar_dets = np.c_[inputs['radar'], np.arange(len(inputs['radar']))]
         camera_dets = np.c_[inputs['camera'], np.arange(len(inputs['camera']))]
         camera_dets = np.asarray([])
-        if self.verbose: print('Raw radar detections:\n', radar_dets)
 
         #compensating velocity of the input radar measurements with the ego vehicle velocity
         radar_dets = self.velocity_compensation(inputs['ego_state'], radar_dets)
+        if self.verbose: print('Raw radar detections:\n', radar_dets)
 
         # Keep the status of which measurements are being used and not
         radar_matched_ids, camera_matched_ids = set(), set()

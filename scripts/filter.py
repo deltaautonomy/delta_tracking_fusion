@@ -10,6 +10,7 @@ import numpy as np
 import time
 import math
 import pdb
+from collections import deque
 
 # A class for Kalman Filter which can take more than 1 sensor as input
 class KalmanFilterRADARCamera():
@@ -24,7 +25,7 @@ class KalmanFilterRADARCamera():
         @param: control_dim - number of control variables
         @param: dt - timestep at which the vehicle state should update
         """
-        self.dt = 0.01
+        self.dt = dt
         self.state_dim = state_dim
         self.camera_dim = camera_dim
         self.radar_dim = radar_dim
@@ -45,7 +46,7 @@ class KalmanFilterRADARCamera():
         self.camera = SensorMeasurementModel(state_dim, camera_dim)
         # Radar Measurement Model [x, y, vx, vy]
         self.radar = SensorMeasurementModel(state_dim, radar_dim)
-        self.initialize_filter(sigma_acc=8.8)
+        self.initialize_filter(sigmax_acc=8.8, sigmay_acc=1.1)
 
         self.id = vehicle_id
         self.time_since_update = 0
@@ -53,7 +54,7 @@ class KalmanFilterRADARCamera():
         self.last_call_time = first_call_time
 
 
-    def initialize_filter(self, sigma_acc=8.8):
+    def initialize_filter(self, sigmax_acc=8.8, sigmay_acc=4.4):
         """
         Internal function to initialize the filter
 
@@ -64,9 +65,9 @@ class KalmanFilterRADARCamera():
 
         assert (self.F.shape == (4, 4)), "The state dimension is incorrect"
         self.x +=0.000001
-        self.F, self.P, self.B, G = self.constant_velocity_motion_model(self.dt)
+        self.F, self.P, self.B, G = self.constant_velocity_motion_model(self.dt, sigmax_acc, sigmay_acc)
 
-        self.Q = np.matmul(G.T, G) * sigma_acc**2
+        self.Q = np.matmul(G.T, G)
 
         H_camera = np.array([[1, 0, 0, 0],
                              [0, 1, 0, 0]])
@@ -99,7 +100,7 @@ class KalmanFilterRADARCamera():
         self.age += 1
         self.time_since_update += 1 
 
-        self.F, _, _, _ = self.constant_velocity_motion_model(time_step)
+        self.F, _, _, _ = self.constant_velocity_motion_model(time_step, 0, 0)
 
         if u is None:
             self.x = np.matmul(self.F,self.x)
@@ -114,7 +115,7 @@ class KalmanFilterRADARCamera():
             print("_____State_____ \n", self.x )
             print("_____covariance_____\n", self.P)
 
-    def constant_velocity_motion_model(self, time_step):
+    def constant_velocity_motion_model(self, time_step, sigmax_acc, sigmay_acc):
         """
         Fuction to calculate the matrices of the filter. Uses constant velocity model
 
@@ -134,7 +135,7 @@ class KalmanFilterRADARCamera():
         B = np.array([[0, 0, 1, 0],
                       [0, 0, 0, 1]])
 
-        G = np.array([[0.5*T**2, 0.5*T**2, T, T]])
+        G = np.array([[sigmax_acc*0.5*T**2, sigmay_acc*0.5*T**2, sigmax_acc*T, sigmay_acc*T]])
 
         return F, P, B, G
 
@@ -221,7 +222,7 @@ class KalmanFilterRADARCamera():
 
 
 class SensorMeasurementModel():
-    def __init__(self, state_dim, sensor_dim):
+    def __init__(self, state_dim, sensor_dim, adaptive_noise=False):
         self.state_dim = state_dim
         self.sensor_dim = sensor_dim
 
@@ -236,6 +237,11 @@ class SensorMeasurementModel():
 
         # measurement function. Maps measurement values to state
         self.H = np.zeros((sensor_dim, state_dim))
+        
+        # for finding out adaptive noise
+        self.last_measurements = deque()
+        self.num_measurements = 0
+        self.buffer_size = 10
 
     def set_H(self, H):
         """
@@ -257,6 +263,26 @@ class SensorMeasurementModel():
         if R is not None:
             self.set_R(R)
 
+    def calc_adaptive_R(self, measurement):
+        assert (measurement.shape == self.z.shape), "Shape of the Z matrix is incorrect"
+        
+        if self.num_measurements < self.buffer_size:
+            self.last_measurements.append(measurement.squeeze())
+            self.num_measurements += 1
+        else:
+            self.last_measurements.popleft()
+            self.last_measurements.append(measurement.squeeze())
+
+        if self.num_measurements > 5: 
+            np_meas = np.array(list(self.last_measurements))
+            R = np.matrix([[np.std(np_meas[:,0])**2, 0.0, 0.0, 0.0],
+                           [0.0, np.std(np_meas[:,1])**2, 0.0, 0.0],
+                           [0.0, 0.0, np.std(np_meas[:,2])**2, 0.0],
+                           [0.0, 0.0, 0.0, np.std(np_meas[:,3])**2]])
+        else:
+            R = np.eye(self.sensor_dim)
+        self.set_R(R)
+
 
 if __name__ == "__main__":
     KF = KalmanFilterRADARCamera(vehicle_id=1,
@@ -275,3 +301,12 @@ if __name__ == "__main__":
 
     KF.predict_step(1.05)
     KF.update_step(z_camera=np.array([[1],[3]]), z_radar=np.array([[1.2],[4.2],[1.5],[1.5]]), R_radar=R)
+    KF.radar.calc_adaptive_R(np.array([[1.2],[4.2],[1.8],[1.51]]))
+    KF.radar.calc_adaptive_R(np.array([[1.4],[4.1],[1.6],[1.54]]))
+    KF.radar.calc_adaptive_R(np.array([[1.1],[4.3],[1.1],[1.53]]))
+    KF.radar.calc_adaptive_R(np.array([[1.5],[4.4],[1.3],[1.51]]))
+    KF.radar.calc_adaptive_R(np.array([[1.3],[4.2],[1.5],[1.58]]))
+    KF.radar.calc_adaptive_R(np.array([[1.2],[4.2],[1.8],[1.51]]))    
+    pdb.set_trace()
+
+    # pdb.set_trace()
