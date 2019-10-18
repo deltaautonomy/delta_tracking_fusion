@@ -17,7 +17,6 @@ from init_paths import *
 # Built-in modules
 import pdb
 
-
 # ROS modules
 import rospy
 

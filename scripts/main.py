@@ -43,7 +43,7 @@ from scripts.cube_marker_publisher import make_label, make_pictogram, make_traje
 
 # Global objects
 STOP_FLAG = False
-cmap = plt.get_cmap('rainbow')
+cmap = plt.get_cmap('tab10')
 tf_listener = None
 trajectories = {}
 
@@ -53,8 +53,8 @@ EGO_VEHICLE_FRAME = 'ego_vehicle'
 
 # Classes
 pp = pprint.PrettyPrinter(indent=4)
-tracker = Tracker(verbose=True)
-acc = motmetrics.MOTAccumulator(auto_id=True)
+tracker = Tracker()
+acc = mot.MOTAccumulator(auto_id=True)
 occupancy_grid = OccupancyGridGenerator(30, 100, EGO_VEHICLE_FRAME, 0.5)
 
 # FPS loggers
@@ -195,8 +195,8 @@ def tracking_fusion_pipeline(camera_msg, radar_msg, state_msg,
 
     # Display FPS logger status
     all_fps.tick()
-    # sys.stdout.write('\r%s ' % (tracker_fps.get_log()))
-    # sys.stdout.flush()
+    sys.stdout.write('\r%s ' % (tracker_fps.get_log()))
+    sys.stdout.flush()
 
     return tracks
 
