@@ -44,10 +44,10 @@ class Tracklet():
         self.misses = 0
 
         # RADAR measurement noise
-        self.std_radar_x = 0.5  #3
-        self.std_radar_y = 0.5  #1
-        self.std_radar_vx = 0.5  #1.5
-        self.std_radar_vy = 0.5  #1
+        self.std_radar_x = 0.5  # 3
+        self.std_radar_y = 0.5  # 1
+        self.std_radar_vx = 0.5  # 1.5
+        self.std_radar_vy = 0.5  # 1
         self.R_radar = np.diag([self.std_radar_x ** 2, self.std_radar_y ** 2,
                                 self.std_radar_vx ** 2, self.std_radar_vy ** 2])
 
@@ -134,7 +134,7 @@ class Tracker():
 
         H = np.asarray([[np.cos(dyaw_dt), -np.sin(dyaw_dt), vx_dt],
                         [np.sin(dyaw_dt),  np.cos(dyaw_dt), vy_dt],
-                        [ 0,                0,              1    ]])
+                        [              0,                0,     1]])
 
         if inverse: H = np.linalg.inv(H)
         print('H matrix is: {}'.format(H))
