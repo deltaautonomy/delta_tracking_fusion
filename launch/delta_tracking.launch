@@ -1,55 +1,22 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <launch>
-
-    <!-- Play rosbag record -->
-    <!-- <include file="$(find delta_perception)/launch/play_rosbag.launch">
-        <arg name="filename" value="$(find delta_perception)/bags/Pittsburgh-02.bag" />
-    </include> -->
-
     <!-- <include file="$(find carla_ros_bridge)/launch/client_with_radar.launch">
     </include> -->
 
     <!-- Run ego-vehicle prediction -->
-    <include file="$(find delta_prediction)/launch/ego_vehicle_prediction.launch">
+    <include
+        file="$(find delta_prediction)/launch/ego_vehicle_prediction.launch">
     </include>
 
     <!-- Run the perception pipeline -->
-    <node
-        pkg="delta_perception"
-        type="main.py"
-        name="main_perception"
-        output="screen">
-    </node>
+    <include
+        file="$(find delta_perception)/launch/object_detection.launch">
+    </include>
 
-    <!-- Display input image -->
-    <node
-        name="image_view_input"
-        pkg="image_view"
-        type="image_view"
-        respawn="false"
-        output="screen">
-        <remap from="image" to="/carla/ego_vehicle/camera/rgb/front/image_color" />
-    </node>
-
-    <!-- Display object detection and tracking image -->
-    <!-- <node
-        name="image_view_object_detection_tracking"
-        pkg="image_view"
-        type="image_view"
-        respawn="false"
-        output="screen">
-        <remap from="image" to="/delta/perception/object_detection_tracking/image" />
-    </node> -->
-
-    <!-- Display lane detection image -->
-    <!-- <node
-        name="image_view_lane_detection"
-        pkg="image_view"
-        type="image_view"
-        respawn="false"
-        output="screen">
-        <remap from="image" to="/delta/perception/lane_detection/image" />
-    </node> -->
+    <!-- Run the lane detection node -->
+    <include
+        file="$(find delta_perception)/launch/lane_detection.launch">
+    </include>
 
     <node
         pkg="delta_tracking_fusion"
@@ -58,8 +25,7 @@
         output="screen">
     </node>
 
-    <!-- <node
-        type="rviz" name="rviz" pkg="rviz" args="-d $(find delta_perception)/perception.rviz">
-    </node> -->
-
+    <node
+        type="rviz" name="rviz" pkg="rviz" args="-d $(find delta_tracking_fusion)/tracking_fusion.rviz">
+    </node>
 </launch>

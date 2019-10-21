@@ -74,7 +74,7 @@ Visualization Manager:
       Value: true
     - Class: rviz/Image
       Enabled: true
-      Image Topic: /delta/perception/object_detection_tracking/image
+      Image Topic: /image_view_object_detection/output
       Max Value: 1
       Median window: 5
       Min Value: 0
@@ -127,7 +127,7 @@ Visualization Manager:
       Marker Topic: /delta/tracking_fusion/tracker/trajectory_marker
       Name: On-Coming Vehicles Trajectory
       Namespaces:
-        {}
+        "": true
       Queue Size: 100
       Value: true
     - Alpha: 0.699999988
