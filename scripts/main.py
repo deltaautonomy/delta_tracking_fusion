@@ -64,15 +64,16 @@ all_fps = FPSLogger('All')
 
 ########################### Functions ###########################
 
-def validate(tracks, ground_truth, max_distance=40.0):
+def validate(tracks, gt_msg, max_sq_dist=100.0):
     # Compute cost matrix.
-    objects = np.asarray([tracks[track_id]['state'][:2] for track_id in tracks])
-    hypothesis = np.asarray([[track.x, track.y] for track in ground_truth.tracks])
-    cost_matrix = mot.distances.norm2squared_matrix(objects, hypothesis, max_d2=max_distance)
+    detections = np.asarray([tracks[track_id]['state'][:2] for track_id in tracks])
+    ground_truth = np.asarray([[track.x, track.y] for track in gt_msg.tracks])
+    cost_matrix = mot.distances.norm2squared_matrix(ground_truth, detections, max_d2=max_sq_dist)
 
     # Accumulate data for validation.
-    gt_labels = [track.track_id for track in ground_truth.tracks]
+    gt_labels = [track.track_id for track in gt_msg.tracks]
     acc.update(gt_labels, tracks.keys(), cost_matrix)
+
 
 def make_track_msg(track_id, state, state_cov):
     tracker_msg = Track()
@@ -83,15 +84,16 @@ def make_track_msg(track_id, state, state_cov):
     tracker_msg.track_id = int(track_id)
     tracker_msg.covariance = state_cov.flatten().tolist()
     tracker_msg.label = 'vehicle'
+    return tracker_msg
 
 
 def publish_trajectory(publishers, track_id, state, tracks, smoothing=True):
     global trajectories
 
     # Create/update trajectory
-    if track_id not in trajectories: trajectories[track_id] = np.asarray([state[:2].copy()])
-    else: trajectories[track_id] = np.append(trajectories[track_id], [state[:2].copy()], axis=0)
-    
+    if track_id not in trajectories: trajectories[track_id] = np.asarray([state[:2]])
+    else: trajectories[track_id] = np.append(trajectories[track_id], [state[:2]], axis=0)
+
     # Trajectory smoothing over time
     if smoothing:
         length = len(trajectories[track_id])
@@ -100,7 +102,7 @@ def publish_trajectory(publishers, track_id, state, tracks, smoothing=True):
             window = int(min(np.ceil(length - 2) // 2 * 2 + 1, 51))
             trajectories[track_id][:, 0] = savgol_filter(trajectories[track_id][:, 0], window, poly_degree)
             trajectories[track_id][:, 1] = savgol_filter(trajectories[track_id][:, 1], window, poly_degree)
-    
+
     # Publish the trajectory
     publishers['traj_pub'].publish(make_trajectory(trajectories[track_id],
         frame_id=EGO_VEHICLE_FRAME, marker_id=track_id, color=cmap(track_id % 10)))
@@ -133,7 +135,7 @@ def publish_messages(publishers, tracks, timestamp):
         tracker_array_msg.tracks.append(make_track_msg(track_id, state, state_cov))
 
         # Update and publish trajectory
-        publish_trajectory(publishers, track_id, state, tracks)
+        publish_trajectory(publishers, track_id, state.copy(), tracks)
 
     # Publish messages
     grid_msg = occupancy_grid.refresh(grid, timestamp)
@@ -231,7 +233,7 @@ def shutdown_hook():
 
 def run(**kwargs):
     # Start node
-    # rospy.init_node('tracking_fusion_pipeline', anonymous=False)
+    rospy.init_node('tracking_fusion_pipeline', anonymous=False)
     rospy.loginfo('Current PID: [%d]' % os.getpid())
 
     # Handle params and topics
