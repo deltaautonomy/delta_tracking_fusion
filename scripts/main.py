@@ -75,12 +75,12 @@ def validate(tracks, gt_msg, max_sq_dist=100.0):
     acc.update(gt_labels, tracks.keys(), cost_matrix)
 
 
-def make_track_msg(track_id, state, state_cov):
+def make_track_msg(track_id, state, state_cov, ego_state):
     tracker_msg = Track()
     tracker_msg.x = state[0]
     tracker_msg.y = state[1]
-    tracker_msg.vx = state[2]
-    tracker_msg.vy = state[3]
+    tracker_msg.vx = state[2] - ego_state.twist.linear.x
+    tracker_msg.vy = state[3] - ego_state.twist.linear.y
     tracker_msg.track_id = int(track_id)
     tracker_msg.covariance = state_cov.flatten().tolist()
     tracker_msg.label = 'vehicle'
@@ -108,7 +108,7 @@ def publish_trajectory(publishers, track_id, state, tracks, smoothing=True):
         frame_id=EGO_VEHICLE_FRAME, marker_id=track_id, color=cmap(track_id % 10)))
 
 
-def publish_messages(publishers, tracks, timestamp):
+def publish_messages(publishers, tracks, ego_state, timestamp):
     global trajectories
 
     # Generate ROS messages
@@ -132,7 +132,7 @@ def publish_messages(publishers, tracks, timestamp):
             np.r_[state[:2], 3], frame_id=EGO_VEHICLE_FRAME))
 
         # Tracker message
-        tracker_array_msg.tracks.append(make_track_msg(track_id, state, state_cov))
+        tracker_array_msg.tracks.append(make_track_msg(track_id, state, state_cov, ego_state))
 
         # Update and publish trajectory
         publish_trajectory(publishers, track_id, state.copy(), tracks)
@@ -193,7 +193,7 @@ def tracking_fusion_pipeline(camera_msg, radar_msg, state_msg,
     tracker_fps.tick()
 
     # Publish all messages
-    publish_messages(publishers, tracks, timestamp=radar_msg.header.stamp)
+    publish_messages(publishers, tracks, state_msg, timestamp=radar_msg.header.stamp)
 
     # Display FPS logger status
     all_fps.tick()
