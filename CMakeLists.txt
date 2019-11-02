@@ -9,7 +9,6 @@ find_package(catkin REQUIRED COMPONENTS
   rospy
   roscpp
   std_msgs
-  delta_msgs
   sensor_msgs
   visualization_msgs
 )
