@@ -46,7 +46,7 @@ class KalmanFilterRADARCamera():
         self.camera = SensorMeasurementModel(state_dim, camera_dim)
         # Radar Measurement Model [x, y, vx, vy]
         self.radar = SensorMeasurementModel(state_dim, radar_dim)
-        self.initialize_filter(sigmax_acc=8.8, sigmay_acc=1.1)
+        self.initialize_filter(sigmax_acc=8.8, sigmay_acc=8.8)
 
         self.id = vehicle_id
         self.time_since_update = 0
@@ -68,6 +68,13 @@ class KalmanFilterRADARCamera():
         self.F, self.P, self.B, G = self.constant_velocity_motion_model(self.dt, sigmax_acc, sigmay_acc)
 
         self.Q = np.matmul(G.T, G)
+        # See if this is working as desired
+        temp = np.array([[1, 0, 1, 0],
+                         [0, 1, 0, 1],
+                         [1, 0, 1, 0],
+                         [0, 1, 0, 1]])
+        self.Q = np.multiply(self.Q, temp)
+
 
         H_camera = np.array([[1, 0, 0, 0],
                              [0, 1, 0, 0]])

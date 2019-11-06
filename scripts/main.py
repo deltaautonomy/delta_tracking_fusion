@@ -30,6 +30,7 @@ import message_filters
 from nav_msgs.msg import OccupancyGrid
 from visualization_msgs.msg import Marker
 from jsk_rviz_plugins.msg import PictogramArray
+from diagnostic_msgs.msg import DiagnosticStatus, KeyValue
 from radar_msgs.msg import RadarTrack, RadarTrackArray
 from delta_perception.msg import CameraTrack, CameraTrackArray
 from delta_prediction.msg import EgoStateEstimate
@@ -62,7 +63,9 @@ FRAME_COUNT = 0
 tracker_fps = FPSLogger('Tracker')
 all_fps = FPSLogger('All')
 
+
 ########################### Functions ###########################
+
 
 def validate(tracks, gt_msg, max_sq_dist=100.0):
     # Compute cost matrix.
@@ -218,8 +221,8 @@ def shutdown_hook():
     global STOP_FLAG
     STOP_FLAG = True
     time.sleep(3)
-    print('\n\033[95m' + '*' * 30 + ' Delta Tracking and Fusion Shutdown ' + '*' * 30 + '\033[00m\n')
 
+    print('\n\033[95m' + '*' * 30 + ' Delta Tracking and Fusion Shutdown ' + '*' * 30 + '\033[00m\n')
     print('\n\033[95m' + '*' * 30 + ' MOT Events Summary ' + '*' * 30 + '\033[00m\n')
     print(acc.mot_events)
 
@@ -246,6 +249,7 @@ def run(**kwargs):
     track_marker = rospy.get_param('~track_marker', '/delta/tracking_fusion/tracker/track_id_marker')
     label_marker = rospy.get_param('~label_marker', '/delta/tracking_fusion/tracker/label_marker')
     trajectory_marker = rospy.get_param('~trajectory_marker', '/delta/tracking_fusion/tracker/trajectory_marker')
+    diagnostics = rospy.get_param('~diagnostics', '/delta/tracking_fusion/tracker/diagnostics')
 
     # Display params and topics
     rospy.loginfo('CameraTrackArray topic: %s' % camera_track)
@@ -257,6 +261,7 @@ def run(**kwargs):
     rospy.loginfo('Track ID Marker topic: %s' % track_marker)
     rospy.loginfo('Label Marker topic: %s' % label_marker)
     rospy.loginfo('Trajectory Marker topic: %s' % trajectory_marker)
+    rospy.loginfo('Diagnostics topic: %s' % diagnostics)
 
     # Publish output topic
     publishers = {}
@@ -265,6 +270,7 @@ def run(**kwargs):
     publishers['marker_pub'] = rospy.Publisher(track_marker, Marker, queue_size=5)
     publishers['label_pub'] = rospy.Publisher(label_marker, PictogramArray, queue_size=5)
     publishers['traj_pub'] = rospy.Publisher(trajectory_marker, Marker, queue_size=5)
+    publishers['diag_pub'] = rospy.Publisher(diagnostics, DiagnosticStatus, queue_size=5)
 
     # Subscribe to topics
     camera_sub = message_filters.Subscriber(camera_track, CameraTrackArray)

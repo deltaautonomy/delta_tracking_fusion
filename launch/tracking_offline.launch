@@ -5,8 +5,6 @@
         <arg name="filename" value="$(find delta_perception)/bags/tracking_validation_crash_02.bag" />
     </include>
 
-    <!-- <param name ="/use_sim_time" value="true"/> -->
-
     <node
         pkg="delta_tracking_fusion"
         type="main.py"
@@ -14,7 +12,7 @@
         output="screen">
     </node>
 
-    <!--<node
+    <node
         type="rviz" name="rviz" pkg="rviz" args="-d $(find delta_tracking_fusion)/tracking_fusion.rviz">
-    </node>-->
+    </node>
 </launch>
