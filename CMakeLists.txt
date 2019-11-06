@@ -11,24 +11,6 @@ find_package(catkin REQUIRED COMPONENTS
   std_msgs
   sensor_msgs
   visualization_msgs
-  message_generation
-  # delta_prediction
-)
-
-################################################
-## Declare ROS messages, services and actions ##
-################################################
-
-## Generate messages in the 'msg' folder
-add_message_files(
-    FILES
-    Track.msg
-    TrackArray.msg
-)
-
-generate_messages(
-  DEPENDENCIES
-  std_msgs
 )
 
 ###################################
@@ -38,7 +20,7 @@ generate_messages(
 catkin_package(
   INCLUDE_DIRS include
   LIBRARIES ${PROJECT_NAME}
-  CATKIN_DEPENDS roscpp sensor_msgs visualization_msgs message_runtime
+  CATKIN_DEPENDS roscpp
   # DEPENDS system_lib
 )
 

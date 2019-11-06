@@ -32,9 +32,11 @@ from visualization_msgs.msg import Marker
 from jsk_rviz_plugins.msg import PictogramArray
 from diagnostic_msgs.msg import DiagnosticStatus, KeyValue
 from radar_msgs.msg import RadarTrack, RadarTrackArray
-from delta_perception.msg import CameraTrack, CameraTrackArray
-from delta_prediction.msg import EgoStateEstimate
-from delta_tracking_fusion.msg import Track, TrackArray
+from delta_msgs.msg import (CameraTrack
+                            CameraTrackArray,
+                            EgoStateEstimate,
+                            Track,
+                            TrackArray)
 
 # Local python modules
 from utils import *
