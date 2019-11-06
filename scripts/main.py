@@ -30,7 +30,7 @@ import message_filters
 from nav_msgs.msg import OccupancyGrid
 from visualization_msgs.msg import Marker
 from jsk_rviz_plugins.msg import PictogramArray
-from diagnostic_msgs.msg import DiagnosticStatus, KeyValue
+from diagnostic_msgs.msg import DiagnosticArray
 from radar_msgs.msg import RadarTrack, RadarTrackArray
 from delta_msgs.msg import (CameraTrack
                             CameraTrackArray,
@@ -186,11 +186,14 @@ def get_tracker_inputs(camera_msg, radar_msg, state_msg):
     return inputs
 
 
+def publish_diagnostics(publishers):
+    msg = DiagnosticArray()
+    msg.status.append(make_diagnostics_status('Tracker', 'Tracking and Fusion', str(tracker_fps.fps)))
+    publishers['diag_pub'].publish(msg)
+
+
 def tracking_fusion_pipeline(camera_msg, radar_msg, state_msg,
     publishers, vis=True, **kwargs):
-    # Log pipeline FPS
-    all_fps.lap()
-
     # Tracker update
     tracker_fps.lap()
     inputs = get_tracker_inputs(camera_msg, radar_msg, state_msg)
@@ -201,9 +204,11 @@ def tracking_fusion_pipeline(camera_msg, radar_msg, state_msg,
     publish_messages(publishers, tracks, state_msg, timestamp=radar_msg.header.stamp)
 
     # Display FPS logger status
-    all_fps.tick()
-    sys.stdout.write('\r%s ' % (tracker_fps.get_log()))
-    sys.stdout.flush()
+    # sys.stdout.write('\r%s ' % (tracker_fps.get_log()))
+    # sys.stdout.flush()
+
+    # Publish diagnostics status
+    publish_diagnostics(publishers)
 
     return tracks
 
@@ -272,7 +277,7 @@ def run(**kwargs):
     publishers['marker_pub'] = rospy.Publisher(track_marker, Marker, queue_size=5)
     publishers['label_pub'] = rospy.Publisher(label_marker, PictogramArray, queue_size=5)
     publishers['traj_pub'] = rospy.Publisher(trajectory_marker, Marker, queue_size=5)
-    publishers['diag_pub'] = rospy.Publisher(diagnostics, DiagnosticStatus, queue_size=5)
+    publishers['diag_pub'] = rospy.Publisher(diagnostics, DiagnosticArray, queue_size=5)
 
     # Subscribe to topics
     camera_sub = message_filters.Subscriber(camera_track, CameraTrackArray)

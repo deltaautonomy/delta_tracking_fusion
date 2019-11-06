@@ -18,7 +18,11 @@ import PIL.Image
 import rospy
 from cv_bridge import CvBridge, CvBridgeError
 from sensor_msgs.msg import Image, CameraInfo
-from tf.transformations import translation_matrix, quaternion_matrix, concatenate_matrices, euler_from_quaternion
+from diagnostic_msgs.msg import DiagnosticStatus
+from tf.transformations import (translation_matrix,
+                                quaternion_matrix,
+                                concatenate_matrices,
+                                euler_from_quaternion)
 
 # Global variables
 CV_BRIDGE = CvBridge()
@@ -107,3 +111,12 @@ def pose_to_transformation(pose=None, position=None, orientation=None):
     if orientation is None:
         orientation = orientation_to_numpy(pose.orientation)
     return concatenate_matrices(translation_matrix(position), quaternion_matrix(orientation))
+
+
+def make_diagnostics_status(name, pipeline, fps, level=DiagnosticStatus.OK):
+    msg = DiagnosticStatus()
+    msg.level = DiagnosticStatus.OK
+    msg.name = name
+    msg.message = fps
+    msg.hardware_id = pipeline
+    return msg

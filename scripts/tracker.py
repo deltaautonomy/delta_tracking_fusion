@@ -2,8 +2,8 @@
 # -*- coding: utf-8 -*-
 
 '''
-Author  : Apoorv Singh, Heethesh Vhavle
-Email   : apoorvs@andrew.cmu.edu
+Author  : Heethesh Vhavle, Apoorv Singh
+Email   : heethesh@cmu.edu, apoorvs@andrew.cmu.edu
 Version : 1.0.1
 Date    : Sep 17, 2019
 '''
@@ -136,7 +136,6 @@ class Tracker():
                         [              0,                0,     1]])
 
         if inverse: H = np.linalg.inv(H)
-        print('H matrix is: {}'.format(H))
 
         # Transform the state poses
         # track_state: [x, y, vx, vy, id]
@@ -308,6 +307,7 @@ class Tracker():
         self.prev_timestamp = inputs['timestamp']
 
         return fused_tracks
+
 
 if __name__ == '__main__':    
     tracker = Tracker()
