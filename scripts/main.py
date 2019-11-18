@@ -32,7 +32,7 @@ from visualization_msgs.msg import Marker
 from jsk_rviz_plugins.msg import PictogramArray
 from diagnostic_msgs.msg import DiagnosticArray
 from radar_msgs.msg import RadarTrack, RadarTrackArray
-from delta_msgs.msg import (CameraTrack
+from delta_msgs.msg import (CameraTrack,
                             CameraTrackArray,
                             EgoStateEstimate,
                             Track,
@@ -46,7 +46,8 @@ from scripts.cube_marker_publisher import make_label, make_pictogram, make_traje
 
 # Global objects
 STOP_FLAG = False
-cmap = plt.get_cmap('tab10')
+cmap = plt.get_cmap('tab20')
+cmap_colors = [cmap(i) for i in range(20) if i % 2 != 0]
 tf_listener = None
 trajectories = {}
 
@@ -110,7 +111,7 @@ def publish_trajectory(publishers, track_id, state, tracks, smoothing=True):
 
     # Publish the trajectory
     publishers['traj_pub'].publish(make_trajectory(trajectories[track_id],
-        frame_id=EGO_VEHICLE_FRAME, marker_id=track_id, color=cmap(track_id % 10)))
+        frame_id=EGO_VEHICLE_FRAME, marker_id=track_id, color=cmap_colors[track_id % 10]))
 
 
 def publish_messages(publishers, tracks, ego_state, timestamp):
@@ -188,7 +189,7 @@ def get_tracker_inputs(camera_msg, radar_msg, state_msg):
 
 def publish_diagnostics(publishers):
     msg = DiagnosticArray()
-    msg.status.append(make_diagnostics_status('Tracker', 'Tracking and Fusion', str(tracker_fps.fps)))
+    msg.status.append(make_diagnostics_status('tracker', 'tracking_fusion', str(tracker_fps.fps)))
     publishers['diag_pub'].publish(msg)
 
 
