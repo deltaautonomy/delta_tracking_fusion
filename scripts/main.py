@@ -81,6 +81,17 @@ def validate(tracks, gt_msg, max_sq_dist=100.0):
     acc.update(gt_labels, tracks.keys(), cost_matrix)
 
 
+def validate_iou(tracks, gt_msg, bbox_dim=[10.0, 10.0], max_iou=0.5):
+    # Compute cost matrix.
+    detections = np.asarray([np.r_[tracks[track_id]['state'][:2], bbox_dim] for track_id in tracks])
+    ground_truth = np.asarray([np.r_[[track.x, track.y], bbox_dim] for track in gt_msg.tracks])
+    cost_matrix = mot.distances.iou_matrix(ground_truth, detections, max_iou=max_iou)
+
+    # Accumulate data for validation.
+    gt_labels = [track.track_id for track in gt_msg.tracks]
+    acc.update(gt_labels, tracks.keys(), cost_matrix)
+
+
 def make_track_msg(track_id, state, state_cov, ego_state):
     tracker_msg = Track()
     tracker_msg.x = state[0]
@@ -222,7 +233,7 @@ def callback(camera_msg, radar_msg, state_msg, gt_msg, publishers, **kwargs):
     tracks = tracking_fusion_pipeline(camera_msg, radar_msg, state_msg, publishers)
 
     # Run the validation pipeline
-    validate(tracks, gt_msg)
+    validate_iou(tracks, gt_msg)
 
 
 def shutdown_hook():
@@ -231,7 +242,7 @@ def shutdown_hook():
     time.sleep(3)
 
     print('\n\033[95m' + '*' * 30 + ' Delta Tracking and Fusion Shutdown ' + '*' * 30 + '\033[00m\n')
-    print('\n\033[95m' + '*' * 30 + ' MOT Events Summary ' + '*' * 30 + '\033[00m\n')
+    # print('\n\033[95m' + '*' * 30 + ' MOT Events Summary ' + '*' * 30 + '\033[00m\n')
     # print(acc.mot_events)
 
     # Compute and display tracking metrics
