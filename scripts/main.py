@@ -93,7 +93,7 @@ def make_track_msg(track_id, state, state_cov, ego_state):
     return tracker_msg
 
 
-def publish_trajectory(publishers, track_id, state, tracks, smoothing=True):
+def publish_trajectory(publishers, track_id, state, tracks, smoothing=True, max_length=50):
     global trajectories
 
     # Create/update trajectory
@@ -110,7 +110,7 @@ def publish_trajectory(publishers, track_id, state, tracks, smoothing=True):
             trajectories[track_id][:, 1] = savgol_filter(trajectories[track_id][:, 1], window, poly_degree)
 
     # Publish the trajectory
-    publishers['traj_pub'].publish(make_trajectory(trajectories[track_id],
+    publishers['traj_pub'].publish(make_trajectory(trajectories[track_id][-max_length:],
         frame_id=EGO_VEHICLE_FRAME, marker_id=track_id, color=cmap_colors[track_id % 10]))
 
 
@@ -232,7 +232,7 @@ def shutdown_hook():
 
     print('\n\033[95m' + '*' * 30 + ' Delta Tracking and Fusion Shutdown ' + '*' * 30 + '\033[00m\n')
     print('\n\033[95m' + '*' * 30 + ' MOT Events Summary ' + '*' * 30 + '\033[00m\n')
-    print(acc.mot_events)
+    # print(acc.mot_events)
 
     # Compute and display tracking metrics
     print('\n\033[95m' + '*' * 30 + ' MOT Metrics Summary ' + '*' * 30 + '\033[00m\n')
