@@ -96,8 +96,8 @@ def make_track_msg(track_id, state, state_cov, ego_state):
     tracker_msg = Track()
     tracker_msg.x = state[0]
     tracker_msg.y = state[1]
-    tracker_msg.vx = state[2] - ego_state.twist.linear.x
-    tracker_msg.vy = state[3] - ego_state.twist.linear.y
+    tracker_msg.vx = state[2] + ego_state.twist.linear.x
+    tracker_msg.vy = state[3] + ego_state.twist.linear.y
     tracker_msg.track_id = int(track_id)
     tracker_msg.covariance = state_cov.flatten().tolist()
     tracker_msg.label = 'vehicle'
