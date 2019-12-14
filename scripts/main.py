@@ -104,7 +104,7 @@ def make_track_msg(track_id, state, state_cov, ego_state):
     return tracker_msg
 
 
-def publish_trajectory(publishers, track_id, state, tracks, smoothing=True, max_length=50):
+def publish_trajectory(publishers, track_id, state, tracks, smoothing=True, max_length=35):
     global trajectories
 
     # Create/update trajectory
@@ -182,7 +182,6 @@ def get_tracker_inputs(camera_msg, radar_msg, state_msg):
 
     for track in radar_msg.tracks:
         pos_msg = position_to_numpy(track.track_shape.points[0])
-        # todo(prateek): trasnform this radar data to ego vehicle frame
         inputs['radar'].append(np.asarray([pos_msg[0] - 2.2, pos_msg[1],
             track.linear_velocity.x, track.linear_velocity.y]))
     inputs['radar'] = np.asarray(inputs['radar'])

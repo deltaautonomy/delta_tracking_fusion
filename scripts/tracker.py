@@ -124,7 +124,10 @@ class Tracker():
         return np.c_[states, track_ids]
 
     def motion_compensate(self, ego_state, timestamp, track_states, inverse=True):
+        # Motion compensation is not used, radar detection are
+        # instead velocity compensated later
         return track_states
+
         # ego_state: [x, y, vx, vy, yaw_rate]
         dt = (timestamp - self.prev_timestamp)
         vx_dt = ego_state[2] * dt
@@ -170,16 +173,15 @@ class Tracker():
             track_states_comp = self.motion_compensate(inputs['ego_state'],
                 inputs['timestamp'], self.get_track_states_with_id())
 
-        #----------------------- UPDATE OLD TRACKLETS -----------------------#
-
         # Assign temporary ID for each detection to keep track of its association status
         radar_dets = np.c_[inputs['radar'], np.arange(len(inputs['radar']))]
         camera_dets = np.c_[inputs['camera'], np.arange(len(inputs['camera']))]
-        camera_dets = np.asarray([])
 
-        #compensating velocity of the input radar measurements with the ego vehicle velocity
+        # Compensating velocity of the input radar measurements with the ego vehicle velocity
         radar_dets = self.velocity_compensation(inputs['ego_state'], radar_dets)
         if self.verbose: print('Raw radar detections:\n', radar_dets)
+
+        #----------------------- UPDATE OLD TRACKLETS -----------------------#
 
         # Keep the status of which measurements are being used and not
         radar_matched_ids, camera_matched_ids = set(), set()
